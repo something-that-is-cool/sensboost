@@ -26,6 +26,7 @@ func (app *App) createContent(proc *win.Process) (fyne.CanvasObject, []module.Mo
 		app.createNoDynamicFovModule(proc),
 		app.createNoHurtCamModule(proc),
 		app.createAutoSprintModule(proc),
+		app.createNoParticleModule(proc),
 	}
 	var obj []fyne.CanvasObject
 	for _, m := range m {
@@ -35,7 +36,7 @@ func (app *App) createContent(proc *win.Process) (fyne.CanvasObject, []module.Mo
 		obj = append(obj, window)
 	}
 	b := container.NewBorder(
-		container.NewVBox(obj...),
+		container.NewGridWithRows(4, obj...),
 		app.createFooter(),
 		nil, nil,
 	)
@@ -75,6 +76,13 @@ func (app *App) createAutoSprintModule(proc *win.Process) module.Module {
 	return (&modules.AutoSprint{
 		Process: proc,
 		Error:   app.onError("auto_sprint"),
+	}).Create()
+}
+
+func (app *App) createNoParticleModule(proc *win.Process) module.Module {
+	return (&modules.NoParticle{
+		Process: proc,
+		Error:   app.onError("no_particle"),
 	}).Create()
 }
 

@@ -13,6 +13,8 @@ import (
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
+const Name = "zutil"
+
 type App struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -39,11 +41,11 @@ func (app *App) init(proc *win.Process) ([]module.Module, error) {
 	defer app.winMu.Unlock()
 
 	app.app = fyneapp.New()
-	app.win = app.app.NewWindow("zutil")
+	app.win = app.app.NewWindow(Name)
 
 	app.win.SetMaster()
 	app.win.CenterOnScreen()
-	app.win.Resize(fyne.NewSize(300, 250))
+	app.win.Resize(fyne.NewSize(400, 250))
 	app.win.SetFixedSize(true)
 
 	app.win.SetOnClosed(func() {

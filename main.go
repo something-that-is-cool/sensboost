@@ -39,6 +39,6 @@ func doPanic(v any) {
 		"-----",
 		"Please make sure you're running Minecraft Pocket Edition with version 1.1.5",
 	)
-	robotgo.Alert("Program exited with error (panic)", msg, "OK", "окак")
+	robotgo.Alert("Program exited with error (panic)", msg)
 	os.Exit(1)
 }

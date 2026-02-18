@@ -10,6 +10,7 @@ import (
 
 type SigToggleModule struct {
 	Signature []byte
+	Offset    uintptr
 	Process   *win.Process
 	Error     func(error)
 

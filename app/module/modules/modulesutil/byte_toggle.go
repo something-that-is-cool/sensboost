@@ -10,6 +10,8 @@ import (
 
 type ByteToggleModule struct {
 	Signature []byte
+	Offset    uintptr //optional
+	Original  []byte  //optional
 	Patch     []byte
 	Process   *win.Process
 	Error     func(error)
@@ -49,10 +51,17 @@ func (m *ByteToggleModule) lazyToggler() (*win.ByteToggler, error) {
 			return nil, fmt.Errorf("signature not found: %w", err)
 		}
 	}
+	addr += m.Offset
+	if len(m.Original) == 0 {
+		m.Original = m.Signature
+	}
+	//if len(m.Signature) < len(m.Patch) {
+	// alloc for injection ?
+	//}
 	t := &win.ByteToggler{
 		Process:  m.Process,
 		Address:  addr,
-		Original: m.Signature,
+		Original: m.Original,
 		Patch:    m.Patch,
 	}
 	testAddr, _ := win.ScanSignature(m.Process, uintptr(len(m.Patch)), addr, m.Patch)

@@ -2,6 +2,7 @@ package modules
 
 import (
 	_ "embed"
+	"math"
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
@@ -28,10 +29,10 @@ func (conf ControllerSensitivity) Create() module.Module {
 		Max:     300,
 		Default: 100,
 		SliderToMemory: func(f float64) float32 {
-			return float32(f) / 100
+			return float32(math.Ceil(f)) / 100
 		},
 		MemoryToSlider: func(f float32) float64 {
-			return float64(f) * 100
+			return math.Ceil(float64(f) * 100)
 		},
 		BaseAddress: baseAddress,
 		Offsets:     offsets,
