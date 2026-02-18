@@ -37,19 +37,20 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 	if input.Text == "" {
 		input.Text = fmt.Sprint(conf.Default)
 	}
-	recursive := false
+	sliderRecursive := false
+	inputRecursive := false
 
 	previousSlider := 0.0
 	slider.OnChanged = func(f float64) {
-		if recursive {
+		if sliderRecursive {
 			return
 		}
-		recursive = true
+		inputRecursive = true
 		input.SetText(fmt.Sprint(f))
-		recursive = false
+		inputRecursive = false
 	}
 	slider.OnChangeEnded = func(f float64) {
-		if recursive {
+		if sliderRecursive {
 			return
 		}
 		conf.OnEditSlider(slider, previousSlider, f)
@@ -57,7 +58,7 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 	}
 	previousInput := ""
 	input.OnChanged = func(s string) {
-		if recursive {
+		if inputRecursive {
 			return
 		}
 		f, err := strconv.ParseFloat(s, 64)
@@ -67,11 +68,11 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 			conf.OnEditInput(input, previousInput, s)
 		}
 		previousInput = s
-
-		recursive = true
+		// must make input instead of slider recursive here !!!
+		inputRecursive = true
 		slider.SetValue(f)
 		input.SetText(fmt.Sprint(f))
-		recursive = false
+		inputRecursive = false
 	}
 	return slider, input
 }
