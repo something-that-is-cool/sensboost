@@ -25,6 +25,7 @@ func (app *App) createContent(proc *win.Process) (fyne.CanvasObject, []module.Mo
 		app.createControllerSensitivityModule(proc),
 		app.createNoDynamicFovModule(proc),
 		app.createNoHurtCamModule(proc),
+		app.createAutoSprintModule(proc),
 	}
 	var obj []fyne.CanvasObject
 	for _, m := range m {
@@ -67,6 +68,13 @@ func (app *App) createNoHurtCamModule(proc *win.Process) module.Module {
 	return (&modules.NoHurtCam{
 		Process: proc,
 		Error:   app.onError("no_hurt_cam"),
+	}).Create()
+}
+
+func (app *App) createAutoSprintModule(proc *win.Process) module.Module {
+	return (&modules.AutoSprint{
+		Process: proc,
+		Error:   app.onError("auto_sprint"),
 	}).Create()
 }
 
