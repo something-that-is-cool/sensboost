@@ -68,7 +68,8 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 			conf.OnEditInput(input, previousInput, s)
 		}
 		previousInput = s
-		// must make input instead of slider recursive here !!!
+		// must make input instead of slider recursive here so slider can call
+		// handler
 		inputRecursive = true
 		slider.SetValue(f)
 		input.SetText(fmt.Sprint(f))
