@@ -2,42 +2,47 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/k4ties/sensboost/app/sens"
+	"github.com/k4ties/sensboost/internal/pkg/win"
 )
 
 type Config struct {
-	Logger     *slog.Logger `yaml:"-"`
-	Process    string       `yaml:"process"`
-	BaseOffset uintptr      `yaml:"base_offset"`
-	Offsets    []uintptr    `yaml:"offsets"`
+	Logger  *slog.Logger
+	Process string
 }
 
 // New tries to create new App instance from Config, allowing to provide custom
 // context to control app lifecycle.
 func (conf Config) New(parent context.Context) (*App, error) {
+	if conf.Process == "" {
+		return nil, errors.New("empty process")
+	}
 	if conf.Logger == nil {
 		conf.Logger = slog.Default()
 	}
-	trackerConf := sens.TrackerConfig{
-		ProcessName: conf.Process,
-		BaseOffset:  conf.BaseOffset,
-		Offsets:     conf.Offsets,
-		Logger:      conf.Logger.With("from", "sens-tracker"),
-	}
-	tr, err := trackerConf.New()
+	proc, err := win.OpenProcess(conf.Process)
 	if err != nil {
-		return nil, fmt.Errorf("create sensitivity tracker: %w", err)
+		return nil, fmt.Errorf("open process: %w", err)
 	}
 	ctx, cancel := context.WithCancel(parent)
 	app := &App{
 		ctx:    ctx,
 		cancel: cancel,
-		tr:     tr,
 		conf:   conf,
 	}
-	app.wg.Add(1) //add one wg for closing
+	trackerConf := win.ProcessTrackerConfig{
+		Handlers: []func(){func() {
+			_ = app.Close(false)
+		}},
+		Process: proc,
+	}
+	app.tr, err = trackerConf.New()
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("create tracker: %w", err)
+	}
 	return app, nil
 }
