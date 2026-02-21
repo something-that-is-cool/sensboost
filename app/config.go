@@ -27,12 +27,7 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open process: %w", err)
 	}
-	ctx, cancel := context.WithCancel(parent)
-	app := &App{
-		ctx:    ctx,
-		cancel: cancel,
-		conf:   conf,
-	}
+	app := &App{conf: conf}
 	trackerConf := win.ProcessTrackerConfig{
 		Handlers: []func(){func() {
 			_ = app.Close(false)
@@ -41,8 +36,8 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	}
 	app.tr, err = trackerConf.New()
 	if err != nil {
-		cancel()
 		return nil, fmt.Errorf("create tracker: %w", err)
 	}
+	app.ctx, app.cancel = context.WithCancel(parent)
 	return app, nil
 }
