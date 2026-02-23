@@ -34,5 +34,5 @@ func (*noDynamicFov) Name() string {
 
 // Description ...
 func (*noDynamicFov) Description() string {
-	return "allows to disable dynamic field of view, that is by default always dynamic"
+	return "forces game to think that your field of view is static"
 }

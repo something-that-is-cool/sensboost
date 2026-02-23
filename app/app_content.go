@@ -6,9 +6,12 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules"
+	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
@@ -30,9 +33,7 @@ func (app *App) createContent(proc *win.Process) (fyne.CanvasObject, []module.Mo
 	}
 	var obj []fyne.CanvasObject
 	for _, m := range m {
-		box := container.NewVBox(m.CreateObjects()...)
-		window := container.NewInnerWindow(m.Name(), box)
-
+		window := app.createModuleWindow(m)
 		obj = append(obj, window)
 	}
 	b := container.NewBorder(
@@ -41,6 +42,17 @@ func (app *App) createContent(proc *win.Process) (fyne.CanvasObject, []module.Mo
 		nil, nil,
 	)
 	return b, m, nil
+}
+
+func (app *App) createModuleWindow(m module.Module) fyne.CanvasObject {
+	box := container.NewVBox(m.CreateObjects()...)
+	button := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
+		dialog.ShowInformation("Description", m.Description(), app.win)
+	})
+	button.Importance = widget.LowImportance
+	label := fyneutil.RightBottomCorner(button)
+	stack := container.NewStack(box, label)
+	return container.NewInnerWindow(m.Name(), stack)
 }
 
 func (app *App) createFooter() fyne.CanvasObject {

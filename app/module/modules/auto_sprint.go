@@ -6,8 +6,6 @@ import (
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
-// TODO: keyboard slot fix (send up instantly after down)
-
 var _ module.Module = (*autoSprint)(nil)
 
 var (

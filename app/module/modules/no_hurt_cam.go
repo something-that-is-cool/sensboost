@@ -34,5 +34,5 @@ func (*noHurtCam) Name() string {
 
 // Description ...
 func (*noHurtCam) Description() string {
-	return "allows to prevent camera shaking when player hurt"
+	return "prevents camera shaking when player hurt"
 }
