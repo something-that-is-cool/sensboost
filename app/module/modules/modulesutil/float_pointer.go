@@ -2,9 +2,11 @@ package modulesutil
 
 import (
 	"fmt"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
+	"github.com/go-gl/mathgl/mgl64"
 	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
@@ -21,6 +23,12 @@ type FloatPointerModule struct { // so float64 would be DoublePointerModule
 	Offsets     []uintptr
 
 	addr uintptr
+
+	val struct {
+		sync.RWMutex
+		v        float64
+		notFirst bool
+	}
 }
 
 // CreateObjects ...
@@ -49,6 +57,13 @@ func (m *FloatPointerModule) Disable() {
 }
 
 func (m *FloatPointerModule) write(val float64) {
+	m.val.Lock()
+	defer m.val.Unlock()
+
+	if m.val.notFirst && mgl64.FloatEqual(m.val.v, val) {
+		// new value is same as current
+		return
+	}
 	addr, err := m.resolveAddress()
 	if err != nil {
 		m.Error(fmt.Errorf("write %g: %w", val, err))
@@ -57,7 +72,15 @@ func (m *FloatPointerModule) write(val float64) {
 	toWrite := m.SliderToMemory(val)
 	if err = win.WriteMemory[float32](m.Process, addr, toWrite); err != nil {
 		m.Error(fmt.Errorf("write %g: write memory: %w", val, err))
+		return
 	}
+	m.val.v = val
+}
+
+func (m *FloatPointerModule) Value() float64 {
+	m.val.RLock()
+	defer m.val.RUnlock()
+	return m.val.v
 }
 
 func (m *FloatPointerModule) initialRead() (float64, error) {

@@ -4,10 +4,9 @@ go 1.25.5
 
 require (
 	fyne.io/fyne/v2 v2.7.2
+	github.com/go-gl/mathgl v1.2.0
 	github.com/go-vgo/robotgo v1.0.0
-	github.com/pelletier/go-toml/v2 v2.2.4
 	golang.org/x/sys v0.41.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -62,4 +61,5 @@ require (
 	golang.org/x/image v0.36.0 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

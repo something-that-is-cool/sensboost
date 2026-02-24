@@ -6,100 +6,54 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
-	"github.com/something-that-is-cool/zutil/app/module/modules"
 	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
-var controllinURL = func() *url.URL {
-	u, err := url.Parse("https://t.me/+rweTeGr1vOxjM2Qy")
+func (app *App) createContent(modules []module.Module) (fyne.CanvasObject, error) {
+	f, err := app.createFooter()
 	if err != nil {
-		panic(fmt.Errorf("parse controllin link: %w", err))
-	}
-	return u
-}()
-
-func (app *App) createContent(proc *win.Process) (fyne.CanvasObject, []module.Module, error) {
-	m := []module.Module{
-		app.createControllerSensitivityModule(proc),
-		app.createNoDynamicFovModule(proc),
-		app.createNoHurtCamModule(proc),
-		app.createAutoSprintModule(proc),
-		app.createNoParticleModule(proc),
+		return nil, fmt.Errorf("create footer: %w", err)
 	}
 	var obj []fyne.CanvasObject
-	for _, m := range m {
-		window := app.createModuleWindow(m)
+	for _, mod := range modules {
+		window := app.createModuleWindow(mod)
 		obj = append(obj, window)
 	}
-	b := container.NewBorder(
-		container.NewGridWithRows(4, obj...),
-		app.createFooter(),
-		nil, nil,
-	)
-	return b, m, nil
+	a := container.NewGridWithRows(4, obj...)
+	// creating scroll prevents from minimizing bug
+	return container.NewVScroll(fyneutil.WithFooter(a, f)), nil
 }
 
 func (app *App) createModuleWindow(m module.Module) fyne.CanvasObject {
 	box := container.NewVBox(m.CreateObjects()...)
-	button := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		dialog.ShowInformation("Description", m.Description(), app.win)
-	})
+	button := widget.NewButtonWithIcon("",
+		theme.InfoIcon(),
+		app.showInfoFunc("Description", m.Description()),
+	)
 	button.Importance = widget.LowImportance
-	label := fyneutil.RightBottomCorner(button)
-	stack := container.NewStack(box, label)
-	return container.NewInnerWindow(m.Name(), stack)
+	stack := container.NewStack(
+		box,
+		fyneutil.RightBottomCorner(button),
+	)
+	w := container.NewInnerWindow(m.Name(), stack)
+	w.CloseIntercept = func() {
+		m.Disable()
+		w.Hide()
+	}
+	return w
 }
 
-func (app *App) createFooter() fyne.CanvasObject {
+func (app *App) createFooter() (fyne.CanvasObject, error) {
+	u, err := url.Parse("https://t.me/+rweTeGr1vOxjM2Qy")
+	if err != nil {
+		return nil, fmt.Errorf("parse controllin URL: %w", err)
+	}
 	return container.NewBorder(
 		nil, nil,
-		widget.NewHyperlink("Join to controllin", controllinURL),
+		widget.NewHyperlink("Join to controllin", u),
 		widget.NewLabel("Ivan Zov 2011"),
-	)
-}
-
-func (app *App) createControllerSensitivityModule(proc *win.Process) module.Module {
-	return modules.ControllerSensitivity{
-		Process: proc,
-		Error:   app.onError("controller_sensitivity"),
-	}.Create()
-}
-
-func (app *App) createNoDynamicFovModule(proc *win.Process) module.Module {
-	return modules.NoDynamicFov{
-		Process: proc,
-		Error:   app.onError("no_dynamic_fov"),
-	}.Create()
-}
-
-func (app *App) createNoHurtCamModule(proc *win.Process) module.Module {
-	return modules.NoHurtCam{
-		Process: proc,
-		Error:   app.onError("no_hurt_cam"),
-	}.Create()
-}
-
-func (app *App) createAutoSprintModule(proc *win.Process) module.Module {
-	return modules.AutoSprint{
-		Process: proc,
-		Error:   app.onError("auto_sprint"),
-	}.Create()
-}
-
-func (app *App) createNoParticleModule(proc *win.Process) module.Module {
-	return modules.NoParticle{
-		Process: proc,
-		Error:   app.onError("no_particle"),
-	}.Create()
-}
-
-func (app *App) onError(mod string) func(err error) {
-	return func(err error) {
-		app.conf.Logger.Error("an error occurred", "module", mod, "err", err.Error())
-	}
+	), nil
 }

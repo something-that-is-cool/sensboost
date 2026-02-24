@@ -23,11 +23,19 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+
+	log := config.Logger.With("src", "initial-logs")
+	log.Info("creating app instance...")
+
 	a, err := config.New(ctx)
 	if err != nil {
 		doPanic(fmt.Errorf("error creating app: %w", err))
 	}
+	log.Info("created app instance.")
 	defer a.Close(true) //nolint:errcheck
+
+	log.Info("starting app...")
 	if err = a.Run(); err != nil {
 		doPanic(fmt.Errorf("error running app: %w", err))
 	}
@@ -36,7 +44,7 @@ func main() {
 func doPanic(v any) {
 	msg := misc.JoinNewLine(
 		fmt.Sprint(v),
-		"-----",
+		"",
 		"Please make sure you're running Minecraft Pocket Edition with version 1.1.5",
 	)
 	robotgo.Alert("Program exited with error (panic)", msg)
