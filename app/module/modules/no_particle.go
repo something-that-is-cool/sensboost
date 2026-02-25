@@ -34,3 +34,8 @@ func (*noParticle) Name() string {
 func (*noParticle) Description() string {
 	return "disables particle rendering"
 }
+
+// Identifier ...
+func (*noParticle) Identifier() string {
+	return "no_particle"
+}

@@ -156,7 +156,7 @@ func (app *App) closeWin() {
 		return
 	}
 	// make sure app.win is never set to nil after initialized
-	app.conf.Logger.Error("tried to close window before it was initialized")
+	app.conf.Logger.Error("tried to close window before it was initialized (nil)")
 }
 
 //fixme very rarely the app process can freeze forever (while the fyne window closes) why does this happen and do this happen after new update

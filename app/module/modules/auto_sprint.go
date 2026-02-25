@@ -40,3 +40,8 @@ func (*autoSprint) Name() string {
 func (*autoSprint) Description() string {
 	return "automatically sprints for you"
 }
+
+// Identifier ...
+func (*autoSprint) Identifier() string {
+	return "auto_sprint"
+}

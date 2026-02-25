@@ -36,3 +36,8 @@ func (*noDynamicFov) Name() string {
 func (*noDynamicFov) Description() string {
 	return "forces game to think that your field of view is static"
 }
+
+// Identifier ...
+func (*noDynamicFov) Identifier() string {
+	return "no_dynamic_fov"
+}

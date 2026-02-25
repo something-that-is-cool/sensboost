@@ -36,3 +36,8 @@ func (*noHurtCam) Name() string {
 func (*noHurtCam) Description() string {
 	return "prevents camera shaking when player hurt"
 }
+
+// Identifier ...
+func (*noHurtCam) Identifier() string {
+	return "no_hurt_cam"
+}

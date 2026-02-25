@@ -52,3 +52,8 @@ func (*controllerSensitivity) Name() string {
 func (*controllerSensitivity) Description() string {
 	return "allows to modify controller sensitivity to values higher than 100"
 }
+
+// Identifier ...
+func (*controllerSensitivity) Identifier() string {
+	return "controller_sensitivity"
+}

@@ -1,6 +1,9 @@
 package win
 
-import "sync/atomic"
+import (
+	"fmt"
+	"sync/atomic"
+)
 
 type ByteToggler struct {
 	Process  *Process
@@ -12,6 +15,10 @@ type ByteToggler struct {
 }
 
 func (t *ByteToggler) Set(b bool) error {
+	if !t.state.CompareAndSwap(!b, b) {
+		// prevent redundant calls
+		return fmt.Errorf("state is already %t", b)
+	}
 	data := t.Original
 	if b {
 		data = t.Patch
