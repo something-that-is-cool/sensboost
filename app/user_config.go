@@ -47,6 +47,9 @@ func (app *App) loadUserConfig() (conf *UserConfig, err error) {
 	if err != nil {
 		return conf, fmt.Errorf("unmarshal config: %w", err)
 	}
+	if conf == nil { //nilaway
+		return conf, errors.New("couldn't unmarshal config")
+	}
 	return conf, nil
 }
 
@@ -56,11 +59,7 @@ func (app *App) saveUserConfig() {
 	if !func() bool {
 		app.data.Lock()
 		defer app.data.Unlock()
-
-		if app.data.app == nil {
-			return false
-		}
-		return true
+		return app.data.app != nil
 	}() {
 		return
 	}
