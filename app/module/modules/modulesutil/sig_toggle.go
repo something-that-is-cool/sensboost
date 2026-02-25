@@ -13,52 +13,83 @@ type SigToggleModule struct {
 	Offset    uintptr
 	Process   *win.Process
 	Error     func(error)
-
-	toggler *win.SignatureNopToggler
+	OnChange  func(bool)
 }
 
-// CreateObjects ...
-func (m *SigToggleModule) CreateObjects() []fyne.CanvasObject {
-	check := widget.NewCheck(ToggleDisabled, nil)
-	check.OnChanged = m.set(check)
-	return []fyne.CanvasObject{check}
-}
-
-func (m *SigToggleModule) set(check *widget.Check) func(bool) {
-	return CheckSet(m.Error, check, func(b bool, check *widget.Check) error {
-		toggler, err := m.lazyToggler()
+func (conf SigToggleModule) New() ToggleableModule {
+	s := &sigToggleModule{
+		sig:    conf.Signature,
+		offset: conf.Offset,
+		proc:   conf.Process,
+		err:    conf.Error,
+	}
+	s.check = &widget.Check{Text: ToggleDisabled}
+	s.check.OnChanged = CheckSet(conf.Error, s.check, func(b bool, check *widget.Check) error {
+		toggler, err := s.lazyToggler()
 		if err != nil {
 			return fmt.Errorf("get sig toggler: %w", err)
 		}
 		if err = toggler.Set(b); err != nil {
 			return fmt.Errorf("update sig toggler state: %w", err)
 		}
+		conf.OnChange(b)
 		return nil
 	})
+	return s
 }
 
-func (m *SigToggleModule) lazyToggler() (*win.SignatureNopToggler, error) {
-	if m.toggler != nil {
-		return m.toggler, nil
+var _ ToggleableModule = (*sigToggleModule)(nil)
+
+type sigToggleModule struct {
+	sig    []byte
+	offset uintptr
+	proc   *win.Process
+	err    func(error)
+
+	check *widget.Check
+
+	t *win.SignatureNopToggler
+}
+
+// CreateObjects ...
+func (m *sigToggleModule) CreateObjects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{m.check}
+}
+
+func (m *sigToggleModule) Set(b bool) error {
+	m.check.SetChecked(b)
+	return nil
+}
+
+func (m *sigToggleModule) Value() (bool, bool) {
+	return m.t.Enabled(), true
+}
+
+func (m *sigToggleModule) lazyToggler() (*win.SignatureNopToggler, error) {
+	if m.t != nil {
+		return m.t, nil
 	}
 	conf := win.SignatureNopTogglerConfig{
-		Process:   m.Process,
-		Module:    m.Process.Module,
-		Size:      m.Process.ModuleSize,
-		Signature: m.Signature,
+		Process:   m.proc,
+		Module:    m.proc.Module,
+		Size:      m.proc.ModuleSize,
+		Signature: m.sig,
 	}
 	t, err := conf.New()
 	if err != nil {
 		return nil, fmt.Errorf("init toggler: %w", err)
 	}
-	m.toggler = t
-	_ = m.toggler.Set(m.toggler.Enabled())
+	m.t = t
+	//_ = m.toggler.Set(m.toggler.Enabled())
 	return t, nil
 }
 
-func (m *SigToggleModule) Disable() {
-	if m.toggler == nil || !m.toggler.Enabled() {
+func (m *sigToggleModule) Disable() {
+	if m.t == nil || !m.t.Enabled() {
 		return
 	}
-	_ = m.toggler.Set(false)
+	err := m.t.Set(false)
+	if err != nil {
+		m.err(fmt.Errorf("disable (set false): %w", err))
+	}
 }

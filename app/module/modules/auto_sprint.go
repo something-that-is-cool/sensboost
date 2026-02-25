@@ -14,21 +14,36 @@ var (
 )
 
 type AutoSprint struct {
-	Process *win.Process
-	Error   func(error)
+	Process  *win.Process
+	Error    func(error)
+	OnChange func(bool)
 }
 
-func (conf AutoSprint) Create() module.Module {
-	return &autoSprint{ByteToggleModule: &modulesutil.ByteToggleModule{
+func (conf *AutoSprint) Create(p module.Property) module.Module {
+	m := &autoSprint{ToggleableModule: (&modulesutil.ByteToggleModule{
 		Signature: autoSprintSig,
 		Patch:     autoSprintPatch,
 		Process:   conf.Process,
 		Error:     conf.Error,
-	}}
+		OnChange:  conf.OnChange,
+	}).New()}
+	// sync the state
+	_ = m.Set(p.Enabled)
+	return m
+}
+
+// DefaultProperty ...
+func (*AutoSprint) DefaultProperty() module.Property {
+	return module.Property{Enabled: false}
+}
+
+// Identifier ...
+func (*AutoSprint) Identifier() string {
+	return "auto_sprint"
 }
 
 type autoSprint struct {
-	*modulesutil.ByteToggleModule
+	modulesutil.ToggleableModule
 }
 
 // Name ...
@@ -39,9 +54,4 @@ func (*autoSprint) Name() string {
 // Description ...
 func (*autoSprint) Description() string {
 	return "automatically sprints for you"
-}
-
-// Identifier ...
-func (*autoSprint) Identifier() string {
-	return "auto_sprint"
 }

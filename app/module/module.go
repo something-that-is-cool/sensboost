@@ -4,12 +4,18 @@ import "fyne.io/fyne/v2"
 
 type Module interface {
 	Name() string
-	Identifier() string // identify in config
 	Description() string
 	CreateObjects() []fyne.CanvasObject
 	Disable()
 }
 
 type Config interface {
-	Create() Module
+	Create(Property) Module
+	DefaultProperty() Property
+	Identifier() string // identify in config
+}
+
+type Property struct {
+	Enabled bool `json:"enabled,omitempty"`
+	Value   any  `json:"value,omitempty"`
 }

@@ -21,48 +21,92 @@ type App struct {
 
 	conf Config
 
-	app fyne.App
-
-	win   fyne.Window
-	winMu sync.Mutex // in case of concurrent Close call
-
 	wg sync.WaitGroup
 
 	tr *win.ProcessTracker
 
 	closed, started atomic.Bool
 
-	modules   []module.Module
-	modulesMu sync.Mutex // in case of concurrent Close call
+	uConf *UserConfig
+
+	data struct {
+		sync.Mutex
+		modules []module.Module
+
+		win fyne.Window
+		app fyne.App
+	}
 }
 
-func (app *App) init(proc *win.Process) ([]module.Module, error) {
-	modules := app.setupModules(proc)
-	if len(modules) == 0 {
-		return nil, errors.New("no modules created")
-	}
-	app.winMu.Lock()
-	defer app.winMu.Unlock()
+func (app *App) init(proc *win.Process) (err error) {
+	app.data.Lock()
+	defer app.data.Unlock()
 	app.deployFyne()
 
+	app.uConf, err = app.loadUserConfig()
+	if err != nil {
+		return fmt.Errorf("load user config: %w", err)
+	}
+	app.syncTheme(app.uConf)
+
+	configs := app.setupModules(proc)
+	if len(configs) == 0 {
+		return errors.New("no modules created")
+	}
+	modules := app.createModulesFromConfigs(configs)
 	c, err := app.createContent(modules)
 	if err != nil {
-		return nil, fmt.Errorf("create content: %w", err)
+		return fmt.Errorf("create content: %w", err)
 	}
-	app.win.SetContent(c)
-	return modules, nil
+	app.data.modules = modules
+	app.data.win.SetContent(c)
+	return nil
+}
+
+type toCreateModule struct {
+	Config   module.Config
+	Property module.Property
+}
+
+func (app *App) createModulesFromConfigs(configs []module.Config) []module.Module {
+	modules := make([]module.Module, 0, len(configs))
+	toCreate := make([]toCreateModule, 0, len(configs))
+
+	func() {
+		app.uConf.RLock()
+		defer app.uConf.RUnlock()
+
+		for _, conf := range configs {
+			property := conf.DefaultProperty()
+			// check for value in user config
+			v, ok := app.uConf.Modules[conf.Identifier()]
+			if ok {
+				// extract property from module value
+				property = propertyFromValue(v)
+			} else {
+				// add default property to config
+				app.uConf.Modules[conf.Identifier()] = property
+			}
+			toCreate = append(toCreate, toCreateModule{Config: conf, Property: property})
+		}
+	}()
+	// creating all modules within of the mutex !!!
+	for _, m := range toCreate {
+		modules = append(modules, m.Config.Create(m.Property))
+	}
+	return modules
 }
 
 const windowWidth, windowHeight = 400, 520
 
 func (app *App) deployFyne() {
-	app.app = fyneapp.New()
-	app.win = app.app.NewWindow(Name)
+	app.data.app = fyneapp.New()
+	app.data.win = app.data.app.NewWindow(Name)
 
-	app.win.SetMaster()
-	app.win.CenterOnScreen()
-	app.win.Resize(fyne.NewSize(windowWidth, windowHeight))
-	app.win.SetFixedSize(true)
+	app.data.win.SetMaster()
+	app.data.win.CenterOnScreen()
+	app.data.win.Resize(fyne.NewSize(windowWidth, windowHeight))
+	app.data.win.SetFixedSize(true)
 }
 
 var ErrAppClosed = errors.New("app closed")
@@ -77,20 +121,18 @@ func (app *App) Run() error {
 	if !app.started.CompareAndSwap(false, true) {
 		return ErrAlreadyRunning
 	}
-	modules, err := app.init(app.tr.Process())
-	if err != nil {
+	app.conf.Logger.Debug("initializing...")
+	if err := app.init(app.tr.Process()); err != nil {
 		return fmt.Errorf("init: %w", err)
 	}
-	app.modulesMu.Lock()
-	app.modules = modules
-	app.modulesMu.Unlock()
+	app.conf.Logger.Debug("initialized.")
 	go func() {
 		<-app.ctx.Done()
 		if err := app.Close(false); err != nil && !errors.Is(err, ErrAppClosed) {
 			app.conf.Logger.Error("close app", "err", err.Error())
 		}
 	}()
-	app.wg.Go(func() {
+	go func() {
 		defer app.tr.Close()
 		app.conf.Logger.Info("running process tracker...")
 
@@ -99,9 +141,14 @@ func (app *App) Run() error {
 			return
 		}
 		app.conf.Logger.Info("process tracker ended gracefully.")
-	})
+	}()
 	app.conf.Logger.Info("running window...")
-	app.win.ShowAndRun()
+
+	app.data.Lock()
+	w := app.data.win
+	app.data.Unlock()
+	w.ShowAndRun()
+
 	app.conf.Logger.Info("window closed.")
 	return nil
 }
@@ -119,12 +166,12 @@ func (app *App) Close(main bool) error {
 		app.conf.Logger.Debug("disabling modules...")
 		defer app.conf.Logger.Debug("disabled modules.")
 
-		app.modulesMu.Lock()
-		defer app.modulesMu.Unlock()
+		app.data.Lock()
+		defer app.data.Unlock()
 		// disable all modules before canceling context
 		// if we will not do this any logic that takes our context can end
 		// earlier so it won't disable modules properly
-		for _, m := range app.modules {
+		for _, m := range app.data.modules {
 			m.Disable()
 			app.conf.Logger.Debug("disabled module.", "module", m.Name())
 		}
@@ -132,6 +179,8 @@ func (app *App) Close(main bool) error {
 	// after we disabled all modules we can close the context safely
 	app.cancel()
 	app.tr.Close()
+	// save the user config
+	app.saveUserConfig()
 	// wait for additional things to end
 	app.conf.Logger.Debug("waiting for waitgroup end...")
 	app.wg.Wait()
@@ -147,11 +196,11 @@ func (app *App) Close(main bool) error {
 }
 
 func (app *App) closeWin() {
-	app.winMu.Lock()
-	defer app.winMu.Unlock()
+	app.data.Lock()
+	defer app.data.Unlock()
 
-	if app.win != nil {
-		app.win.Close()
+	if app.data.win != nil {
+		app.data.win.Close()
 		app.conf.Logger.Debug("closed window.")
 		return
 	}
