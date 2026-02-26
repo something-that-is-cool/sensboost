@@ -1,8 +1,6 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/elliotchance/orderedmap/v3"
 	"github.com/something-that-is-cool/zutil/app/module"
 )
@@ -21,7 +19,6 @@ func (app *App) createModulesFromConfigs(configs []module.Config) *orderedmap.Or
 		// uConf must not be nil here because it is init func
 		for _, conf := range configs {
 			property := app.mustExtractPropertyUnsafe(conf)
-			fmt.Println(conf.Identifier(), property)
 			toCreate = append(toCreate, toCreateModule{Config: conf, Property: property})
 		}
 	}()

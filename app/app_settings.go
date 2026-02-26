@@ -82,7 +82,6 @@ func (app *App) doImport(reader fyne.URIReadCloser) error {
 	if err = json.Unmarshal(d, &conf); err != nil {
 		return fmt.Errorf("unmarshal json: %w", err)
 	}
-	fmt.Println("conf:", conf)
 	toEdit := app.applyConfig(conf)
 	app.doModuleUpdates(toEdit)
 	return nil

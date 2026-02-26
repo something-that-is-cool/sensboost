@@ -31,7 +31,6 @@ func (conf *AutoSprint) Create(p module.Property) module.Module {
 	}).New()}
 	// sync the state
 	_ = m.Set(p.Enabled)
-	fmt.Println(p.Enabled)
 	return m
 }
 
