@@ -43,7 +43,7 @@ func (app *App) init(proc *win.Process) (err error) {
 	defer app.data.Unlock()
 	app.deployFyne()
 
-	app.uConf, err = app.loadUserConfig()
+	app.uConf, err = app.loadUserConfigUnsafe()
 	if err != nil {
 		return fmt.Errorf("load user config: %w", err)
 	}
@@ -61,40 +61,6 @@ func (app *App) init(proc *win.Process) (err error) {
 	app.data.modules = modules
 	app.data.win.SetContent(c)
 	return nil
-}
-
-type toCreateModule struct {
-	Config   module.Config
-	Property module.Property
-}
-
-func (app *App) createModulesFromConfigs(configs []module.Config) []module.Module {
-	modules := make([]module.Module, 0, len(configs))
-	toCreate := make([]toCreateModule, 0, len(configs))
-
-	func() {
-		app.uConf.RLock()
-		defer app.uConf.RUnlock()
-
-		for _, conf := range configs {
-			property := conf.DefaultProperty()
-			// check for value in user config
-			v, ok := app.uConf.Modules[conf.Identifier()]
-			if ok {
-				// extract property from module value
-				property = propertyFromValue(v)
-			} else {
-				// add default property to config
-				app.uConf.Modules[conf.Identifier()] = property
-			}
-			toCreate = append(toCreate, toCreateModule{Config: conf, Property: property})
-		}
-	}()
-	// creating all modules within of the mutex !!!
-	for _, m := range toCreate {
-		modules = append(modules, m.Config.Create(m.Property))
-	}
-	return modules
 }
 
 const windowWidth, windowHeight = 400, 520

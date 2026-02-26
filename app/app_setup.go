@@ -1,75 +1,41 @@
 package app
 
-import (
-	"fyne.io/fyne/v2/theme"
-	"github.com/something-that-is-cool/zutil/app/module"
-	"github.com/something-that-is-cool/zutil/app/module/modules"
-	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
-)
+import "github.com/something-that-is-cool/zutil/app/module"
 
-func (app *App) syncTheme(conf *UserConfig) {
-	conf.RLock()
-	defer conf.RUnlock()
-
-	variant := theme.VariantDark
-	if conf.LightTheme {
-		variant = theme.VariantLight
+func (app *App) createModulesFromConfigs(configs []module.Config) []module.Module {
+	type toCreateModule struct {
+		Config   module.Config
+		Property module.Property
 	}
-	app.data.app.Settings().SetTheme(fyneutil.NewVariantTheme(variant))
+	modules := make([]module.Module, 0, len(configs))
+	toCreate := make([]toCreateModule, 0, len(configs))
+
+	func() {
+		app.uConf.RLock()
+		defer app.uConf.RUnlock()
+
+		for _, conf := range configs {
+			property := app.mustExtractPropertyUnsafe(conf)
+			toCreate = append(toCreate, toCreateModule{Config: conf, Property: property})
+		}
+	}()
+	// creating all modules within of the mutex !!!
+	for _, m := range toCreate {
+		modules = append(modules, m.Config.Create(m.Property))
+	}
+	return modules
 }
 
-func (app *App) setupModules(proc *win.Process) []module.Config {
-	return []module.Config{
-		app.createControllerSensitivityModule(proc),
-		app.createNoDynamicFovModule(proc),
-		app.createNoHurtCamModule(proc),
-		app.createAutoSprintModule(proc),
-		app.createNoParticleModule(proc),
+func (app *App) mustExtractPropertyUnsafe(conf module.Config) module.Property {
+	property := conf.DefaultProperty()
+	// check for value in user config
+	v, ok := app.uConf.Modules[conf.Identifier()]
+	if ok {
+		// extract property from module value
+		property = propertyFromValue(v)
+	} else {
+		// add default property to config
+		app.uConf.Modules[conf.Identifier()] = property
 	}
-}
-
-func (app *App) createControllerSensitivityModule(proc *win.Process) module.Config {
-	conf := &modules.ControllerSensitivity{
-		Process: proc,
-		Error:   app.onError("controller_sensitivity"),
-	}
-	conf.OnChange = onModuleChange[float64](app, conf.Identifier())
-	return conf
-}
-
-func (app *App) createNoDynamicFovModule(proc *win.Process) module.Config {
-	conf := &modules.NoDynamicFov{
-		Process: proc,
-		Error:   app.onError("no_dynamic_fov"),
-	}
-	conf.OnChange = onModuleChange[bool](app, conf.Identifier())
-	return conf
-}
-
-func (app *App) createNoHurtCamModule(proc *win.Process) module.Config {
-	conf := &modules.NoHurtCam{
-		Process: proc,
-		Error:   app.onError("no_hurt_cam"),
-	}
-	conf.OnChange = onModuleChange[bool](app, conf.Identifier())
-	return conf
-}
-
-func (app *App) createAutoSprintModule(proc *win.Process) module.Config {
-	conf := &modules.AutoSprint{
-		Process: proc,
-		Error:   app.onError("auto_sprint"),
-	}
-	conf.OnChange = onModuleChange[bool](app, conf.Identifier())
-	return conf
-}
-
-func (app *App) createNoParticleModule(proc *win.Process) module.Config {
-	conf := &modules.NoParticle{
-		Process: proc,
-		Error:   app.onError("no_particle"),
-	}
-	conf.OnChange = onModuleChange[bool](app, conf.Identifier())
-	return conf
+	return property
 }

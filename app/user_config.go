@@ -24,11 +24,11 @@ func DefaultUserConfig() *UserConfig {
 
 const ConfigFilename = "config.json"
 
-func (app *App) loadUserConfig() (conf *UserConfig, err error) {
-	if app.data.app == nil {
-		return nil, errors.New("app is not initializied")
+func (app *App) loadUserConfigUnsafe() (conf *UserConfig, err error) {
+	root, ok := app.getRootPath(false)
+	if !ok {
+		return nil, errors.New("fyne app is not initialized")
 	}
-	root := app.data.app.Storage().RootURI().Path()
 	path := filepath.Join(root, ConfigFilename)
 
 	d, err := os.ReadFile(path)
@@ -36,37 +36,28 @@ func (app *App) loadUserConfig() (conf *UserConfig, err error) {
 	case os.IsNotExist(err):
 		conf = DefaultUserConfig()
 		if err = app.writeConfig(conf, path); err != nil {
-			return conf, fmt.Errorf("write default config to %q: %w", path, err)
+			return nil, fmt.Errorf("write default config to %q: %w", path, err)
 		}
 		return conf, nil
 	case err != nil:
 		// that is the actual read error
-		return conf, fmt.Errorf("read config file at %q: %w", path, err)
+		return nil, fmt.Errorf("read config file at %q: %w", path, err)
 	}
-	err = json.Unmarshal(d, &conf)
-	if err != nil {
-		return conf, fmt.Errorf("unmarshal config: %w", err)
+	var c UserConfig
+	if err = json.Unmarshal(d, &c); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
-	if conf == nil { //nilaway
-		return conf, errors.New("couldn't unmarshal config")
-	}
-	return conf, nil
+	return &c, nil
 }
 
 // ref: github.com/gameparrot/netherconnect
 
 func (app *App) saveUserConfig() {
-	if !func() bool {
-		app.data.Lock()
-		defer app.data.Unlock()
-		return app.data.app != nil
-	}() {
+	root, ok := app.getRootPath(true)
+	if !ok {
 		return
 	}
-	root := app.data.app.Storage().RootURI().Path()
 	path := filepath.Join(root, ConfigFilename)
-
-	app.conf.Logger.Debug("saving user config...", "path", path)
 
 	app.uConf.RLock()
 	defer app.uConf.RUnlock()
@@ -76,6 +67,18 @@ func (app *App) saveUserConfig() {
 		return
 	}
 	app.conf.Logger.Debug("saved user config.", "path", path)
+}
+
+func (app *App) getRootPath(safe bool) (string, bool) {
+	if safe {
+		app.data.Lock()
+		defer app.data.Unlock()
+	}
+	if app.data.app == nil {
+		return "", false
+	}
+	root := app.data.app.Storage().RootURI().Path()
+	return root, true
 }
 
 const filePerm = 0777
@@ -96,5 +99,8 @@ func onModuleChange[T any](app *App, id string) func(T) {
 		app.uConf.Lock()
 		defer app.uConf.Unlock()
 		app.uConf.Modules[id] = v
+
+		// log the status
+		app.conf.Logger.Info("module value changed", "module", id, "new_value", v)
 	}
 }

@@ -2,8 +2,21 @@ package app
 
 import (
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"github.com/something-that-is-cool/zutil/app/module"
+	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
 )
+
+func (app *App) syncTheme(conf *UserConfig) {
+	conf.RLock()
+	defer conf.RUnlock()
+
+	variant := theme.VariantDark
+	if conf.LightTheme {
+		variant = theme.VariantLight
+	}
+	app.data.app.Settings().SetTheme(fyneutil.NewVariantTheme(variant))
+}
 
 func (app *App) onError(mod string) func(err error) {
 	return func(err error) {
