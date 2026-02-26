@@ -13,7 +13,7 @@ import (
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/version"
+	"github.com/something-that-is-cool/zutil/internal/version"
 )
 
 var aboutMessage = misc.JoinNewLine(
