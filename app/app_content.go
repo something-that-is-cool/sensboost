@@ -29,8 +29,9 @@ func (app *App) createContent(modules []module.Module) (fyne.CanvasObject, error
 
 func (app *App) createModuleWindow(m module.Module) fyne.CanvasObject {
 	box := container.NewVBox(m.CreateObjects()...)
-	button := fyneutil.NewClickableIcon(theme.InfoIcon(), app.showInfoFunc("Description", m.Description()))
-
+	button := fyneutil.NewClickableIcon(theme.InfoIcon(), func() {
+		app.showInfo("Description", m.Description())
+	})
 	stack := container.NewStack(
 		box,
 		fyneutil.RightBottomCorner(button),
