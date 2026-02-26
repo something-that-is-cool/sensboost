@@ -8,17 +8,18 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/elliotchance/orderedmap/v3"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
 )
 
-func (app *App) createContent(modules []module.Module) (fyne.CanvasObject, error) {
+func (app *App) createContent(modules *orderedmap.OrderedMap[module.Config, module.Module]) (fyne.CanvasObject, error) {
 	f, err := app.createFooter()
 	if err != nil {
 		return nil, fmt.Errorf("create footer: %w", err)
 	}
 	var obj []fyne.CanvasObject
-	for _, mod := range modules {
+	for _, mod := range modules.AllFromFront() {
 		window := app.createModuleWindow(mod)
 		obj = append(obj, window)
 	}
@@ -30,7 +31,7 @@ func (app *App) createContent(modules []module.Module) (fyne.CanvasObject, error
 func (app *App) createModuleWindow(m module.Module) fyne.CanvasObject {
 	box := container.NewVBox(m.CreateObjects()...)
 	button := fyneutil.NewClickableIcon(theme.InfoIcon(), func() {
-		app.showInfo("Description", m.Description())
+		app.showInfo("Description", m.Description(), true)
 	})
 	stack := container.NewStack(
 		box,
@@ -52,6 +53,6 @@ func (app *App) createFooter() (fyne.CanvasObject, error) {
 	return container.NewBorder(
 		nil, nil,
 		widget.NewHyperlink("Join to controllin", u),
-		widget.NewLabel("Ivan Zov 2011"),
+		app.createSettingsObject(),
 	), nil
 }

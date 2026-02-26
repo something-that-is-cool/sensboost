@@ -9,6 +9,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	fyneapp "fyne.io/fyne/v2/app"
+	"github.com/elliotchance/orderedmap/v3"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
@@ -27,11 +28,12 @@ type App struct {
 
 	closed, started atomic.Bool
 
-	uConf *UserConfig
+	uConf   *UserConfig
+	uConfMu sync.Mutex
 
 	data struct {
 		sync.Mutex
-		modules []module.Module
+		modules *orderedmap.OrderedMap[module.Config, module.Module]
 
 		win fyne.Window
 		app fyne.App
@@ -47,23 +49,26 @@ func (app *App) init(proc *win.Process) (err error) {
 	if err != nil {
 		return fmt.Errorf("load user config: %w", err)
 	}
-	app.syncTheme(app.uConf)
+	app.uConfMu.Lock()
+	app.syncThemeUnsafe(app.uConf)
+	app.uConfMu.Unlock()
 
 	configs := app.setupModules(proc)
 	if len(configs) == 0 {
 		return errors.New("no modules created")
 	}
 	modules := app.createModulesFromConfigs(configs)
+	app.data.modules = modules
+
 	c, err := app.createContent(modules)
 	if err != nil {
 		return fmt.Errorf("create content: %w", err)
 	}
-	app.data.modules = modules
 	app.data.win.SetContent(c)
 	return nil
 }
 
-const windowWidth, windowHeight = 400, 520
+const windowWidth, windowHeight = 550, 550
 
 func (app *App) deployFyne() {
 	app.data.app = fyneapp.New()
@@ -134,10 +139,15 @@ func (app *App) Close(main bool) error {
 
 		app.data.Lock()
 		defer app.data.Unlock()
+
+		if app.data.modules == nil {
+			// concurrent close call
+			return
+		}
 		// disable all modules before canceling context
 		// if we will not do this any logic that takes our context can end
 		// earlier so it won't disable modules properly
-		for _, m := range app.data.modules {
+		for _, m := range app.data.modules.AllFromFront() {
 			m.Disable()
 			app.conf.Logger.Debug("disabled module.", "module", m.Name())
 		}
@@ -154,7 +164,8 @@ func (app *App) Close(main bool) error {
 	app.conf.Logger.Debug("closing window...")
 	// close window last of all !!!
 	if !main {
-		fyne.DoAndWait(app.closeWin)
+		//fixme:hack
+		fyne.Do(app.closeWin)
 		return nil
 	}
 	app.closeWin()
@@ -175,3 +186,4 @@ func (app *App) closeWin() {
 }
 
 //fixme very rarely the app process can freeze forever (while the fyne window closes) why does this happen and do this happen after new update
+//upd: it starts closing window but not ends, so the problem is fyne.DoAndWait

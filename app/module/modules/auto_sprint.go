@@ -1,6 +1,8 @@
 package modules
 
 import (
+	"fmt"
+
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
@@ -29,6 +31,7 @@ func (conf *AutoSprint) Create(p module.Property) module.Module {
 	}).New()}
 	// sync the state
 	_ = m.Set(p.Enabled)
+	fmt.Println(p.Enabled)
 	return m
 }
 
@@ -54,4 +57,9 @@ func (*autoSprint) Name() string {
 // Description ...
 func (*autoSprint) Description() string {
 	return "automatically sprints for you"
+}
+
+// Edit ...
+func (a *autoSprint) Edit(p module.Property) {
+	_ = a.Set(p.Enabled)
 }

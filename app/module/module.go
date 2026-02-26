@@ -6,6 +6,7 @@ type Module interface {
 	Name() string
 	Description() string
 	CreateObjects() []fyne.CanvasObject
+	Edit(Property)
 	Disable()
 }
 

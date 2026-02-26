@@ -51,3 +51,8 @@ func (*noHurtCam) Name() string {
 func (*noHurtCam) Description() string {
 	return "prevents camera shaking when player hurt"
 }
+
+// Edit ...
+func (n *noHurtCam) Edit(p module.Property) {
+	_ = n.Set(p.Enabled)
+}

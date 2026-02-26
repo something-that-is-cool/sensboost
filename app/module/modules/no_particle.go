@@ -49,3 +49,8 @@ func (*noParticle) Name() string {
 func (*noParticle) Description() string {
 	return "disables particle rendering"
 }
+
+// Edit ...
+func (n *noParticle) Edit(p module.Property) {
+	_ = n.Set(p.Enabled) //fixme handle error
+}

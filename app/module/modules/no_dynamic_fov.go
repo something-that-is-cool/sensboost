@@ -51,3 +51,8 @@ func (*noDynamicFov) Name() string {
 func (*noDynamicFov) Description() string {
 	return "forces game to think that your field of view is static"
 }
+
+// Edit ...
+func (n *noDynamicFov) Edit(p module.Property) {
+	_ = n.Set(p.Enabled)
+}

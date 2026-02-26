@@ -72,3 +72,12 @@ func (*controllerSensitivity) Name() string {
 func (*controllerSensitivity) Description() string {
 	return "allows to modify controller sensitivity to values higher than 100"
 }
+
+// Edit ...
+func (c *controllerSensitivity) Edit(p module.Property) {
+	v, ok := p.Value.(float64)
+	if !ok {
+		return
+	}
+	_ = c.Set(v)
+}

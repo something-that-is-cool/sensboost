@@ -6,18 +6,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
+
+	"github.com/something-that-is-cool/zutil/app/module"
 )
 
 type UserConfig struct {
-	sync.RWMutex
-	Modules    map[string]any `json:"modules"`
-	LightTheme bool           `json:"light_theme"`
+	Modules    map[string]module.Property `json:"modules"`
+	LightTheme bool                       `json:"light_theme"`
 }
 
 func DefaultUserConfig() *UserConfig {
 	return &UserConfig{
-		Modules:    make(map[string]any),
+		Modules:    make(map[string]module.Property),
 		LightTheme: false,
 	}
 }
@@ -59,9 +59,13 @@ func (app *App) saveUserConfig() {
 	}
 	path := filepath.Join(root, ConfigFilename)
 
-	app.uConf.RLock()
-	defer app.uConf.RUnlock()
+	app.uConfMu.Lock()
+	defer app.uConfMu.Unlock()
 
+	if app.uConf == nil {
+		// can happen because Close called concurrently
+		return
+	}
 	if err := app.writeConfig(app.uConf, path); err != nil {
 		app.conf.Logger.Error("cannot save config", "err", err.Error(), "path", path)
 		return
@@ -95,11 +99,13 @@ func (app *App) writeConfig(conf *UserConfig, path string) (err error) {
 }
 
 func onModuleChange[T any](app *App, id string) func(T) {
+	// this func is called when module created
+	// module is created after uConf initialized, so it must not be nil
 	return func(v T) {
-		app.uConf.Lock()
-		defer app.uConf.Unlock()
-		app.uConf.Modules[id] = v
+		app.uConfMu.Lock()
+		defer app.uConfMu.Unlock()
 
+		app.uConf.Modules[id] = propertyFromValue(v)
 		// log the status
 		app.conf.Logger.Info("module value changed", "module", id, "new_value", v)
 	}
