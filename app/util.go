@@ -12,7 +12,7 @@ func (app *App) syncThemeUnsafe(conf *UserConfig) {
 	if conf.LightTheme {
 		variant = theme.VariantLight
 	}
-	app.data.app.Settings().SetTheme(fyneutil.NewVariantTheme(variant))
+	app.data.app.Settings().SetTheme(fyneutil.NewVariantTheme(theme.DefaultTheme(), variant))
 }
 
 func (app *App) showInfo(title, msg string, safe bool) {

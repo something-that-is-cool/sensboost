@@ -11,9 +11,9 @@ type VariantTheme struct {
 	variant fyne.ThemeVariant
 }
 
-func NewVariantTheme(variant fyne.ThemeVariant) *VariantTheme {
+func NewVariantTheme(original fyne.Theme, variant fyne.ThemeVariant) *VariantTheme {
 	return &VariantTheme{
-		Theme:   fyne.CurrentApp().Settings().Theme(),
+		Theme:   original,
 		variant: variant,
 	}
 }

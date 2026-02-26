@@ -68,7 +68,7 @@ func (app *App) init(proc *win.Process) (err error) {
 	return nil
 }
 
-const windowWidth, windowHeight = 550, 550
+const windowWidth, windowHeight = 400, 550
 
 func (app *App) deployFyne() {
 	app.data.app = fyneapp.New()

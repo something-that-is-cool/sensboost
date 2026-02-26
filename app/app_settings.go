@@ -32,7 +32,13 @@ func (app *App) createSettingsObject() fyne.CanvasObject {
 	about := &widget.Button{Icon: theme.InfoIcon(), OnTapped: func() {
 		app.showInfo("About", aboutMessage, true)
 	}}
-	return fyneutil.LeftAndRight(settings, about)
+	toggleTheme := &widget.Button{Icon: theme.VisibilityIcon(), OnTapped: func() {
+		app.uConfMu.Lock()
+		defer app.uConfMu.Unlock()
+		app.uConf.LightTheme = !app.uConf.LightTheme
+		app.syncThemeUnsafe(app.uConf)
+	}}
+	return fyneutil.LeftAndRight(fyneutil.LeftAndRight(toggleTheme, settings), about)
 }
 
 func (app *App) showSettings() {
