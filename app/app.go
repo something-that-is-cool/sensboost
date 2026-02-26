@@ -14,7 +14,10 @@ import (
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
-const Name = "zutil"
+const (
+	Name = "zutil"
+	ID   = "monster.zov.zutil"
+)
 
 type App struct {
 	ctx    context.Context
@@ -71,7 +74,7 @@ func (app *App) init(proc *win.Process) (err error) {
 const windowWidth, windowHeight = 400, 550
 
 func (app *App) deployFyne() {
-	app.data.app = fyneapp.New()
+	app.data.app = fyneapp.NewWithID(ID)
 	app.data.win = app.data.app.NewWindow(Name)
 
 	app.data.win.SetMaster()
