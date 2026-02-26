@@ -30,6 +30,7 @@ func (app *App) loadUserConfigUnsafe() (conf *UserConfig, err error) {
 		return nil, errors.New("fyne app is not initialized")
 	}
 	path := filepath.Join(root, ConfigFilename)
+	_ = os.MkdirAll(filepath.Dir(path), 0755)
 
 	d, err := os.ReadFile(path)
 	switch {
