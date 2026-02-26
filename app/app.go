@@ -185,5 +185,5 @@ func (app *App) closeWin() {
 	app.conf.Logger.Error("tried to close window before it was initialized (nil)")
 }
 
-//fixme very rarely the app process can freeze forever (while the fyne window closes) why does this happen and do this happen after new update
-//upd: it starts closing window but not ends, so the problem is fyne.DoAndWait
+//fixme very rarely the app process can freeze forever (while the fyne window closes)
+//upd: it starts closing window but not ends, so the problem is probably fyne.DoAndWait
