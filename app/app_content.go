@@ -1,6 +1,7 @@
 package app
 
 import (
+	_ "embed"
 	"fmt"
 	"net/url"
 
