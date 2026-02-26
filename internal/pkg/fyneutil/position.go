@@ -13,3 +13,7 @@ func RightBottomCorner(obj fyne.CanvasObject) fyne.CanvasObject {
 	return container.NewBorder(nil, nil, nil,
 		container.NewBorder(nil, obj, nil, nil))
 }
+
+func LeftAndRight(left, right fyne.CanvasObject) fyne.CanvasObject {
+	return container.NewBorder(nil, nil, left, right)
+}

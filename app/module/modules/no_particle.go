@@ -9,20 +9,35 @@ import (
 var particleSig = []byte{0xE8, 0x68, 0x4F, 0xCF, 0xFF}
 
 type NoParticle struct {
-	Process *win.Process
-	Error   func(error)
+	Process  *win.Process
+	Error    func(error)
+	OnChange func(bool)
 }
 
-func (conf NoParticle) Create() module.Module {
-	return &noParticle{SigToggleModule: &modulesutil.SigToggleModule{
+func (conf *NoParticle) Create(p module.Property) module.Module {
+	n := &noParticle{ToggleableModule: (&modulesutil.SigToggleModule{
 		Signature: particleSig,
 		Process:   conf.Process,
 		Error:     conf.Error,
-	}}
+		OnChange:  conf.OnChange,
+	}).New()}
+	// sync state
+	_ = n.Set(p.Enabled)
+	return n
+}
+
+// DefaultProperty ...
+func (*NoParticle) DefaultProperty() module.Property {
+	return module.Property{Enabled: false}
+}
+
+// Identifier ...
+func (*NoParticle) Identifier() string {
+	return "no_particle"
 }
 
 type noParticle struct {
-	*modulesutil.SigToggleModule
+	modulesutil.ToggleableModule
 }
 
 // Name ...
@@ -35,7 +50,7 @@ func (*noParticle) Description() string {
 	return "disables particle rendering"
 }
 
-// Identifier ...
-func (*noParticle) Identifier() string {
-	return "no_particle"
+// Edit ...
+func (n *noParticle) Edit(p module.Property) {
+	_ = n.Set(p.Enabled) //fixme handle error
 }

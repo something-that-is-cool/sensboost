@@ -22,88 +22,143 @@ type FloatPointerModule struct { // so float64 would be DoublePointerModule
 	BaseAddress uintptr
 	Offsets     []uintptr
 
-	addr uintptr
+	OnChange func(float64)
+}
 
-	val struct {
+// New ...
+func (conf FloatPointerModule) New() ModuleWithValue[float64] {
+	f := &floatPointerModule{
+		err:      conf.Error,
+		proc:     conf.Process,
+		sToM:     conf.SliderToMemory,
+		mToS:     conf.MemoryToSlider,
+		min:      conf.Min,
+		max:      conf.Max,
+		def:      conf.Default,
+		baseAddr: conf.BaseAddress,
+		offsets:  conf.Offsets,
+	}
+	v, err := f.initialRead()
+	if err != nil {
+		v = conf.Default
+		conf.Error(fmt.Errorf("initial read: %w", err))
+	}
+	c := fyneutil.SliderWithTrackedInput{
+		Min:     conf.Min,
+		Max:     conf.Max,
+		Default: v,
+		OnEditSlider: func(_ *widget.Slider, _, new float64) {
+			if !f.forceWrite(new) {
+				return
+			}
+			conf.OnChange(new)
+		},
+	}
+	f.slider, f.input = c.Create()
+	return f
+}
+
+var _ ModuleWithValue[float64] = (*floatPointerModule)(nil)
+
+type floatPointerModule struct {
+	err  func(error)
+	proc *win.Process
+
+	sToM func(float64) float32
+	mToS func(float32) float64
+
+	min, max, def float64
+
+	baseAddr uintptr
+	offsets  []uintptr
+
+	slider *widget.Slider
+	input  *widget.Entry
+
+	val struct { // value tracker to prevent updating to same value
 		sync.RWMutex
 		v        float64
 		notFirst bool
 	}
+
+	a uintptr
 }
 
 // CreateObjects ...
-func (m *FloatPointerModule) CreateObjects() []fyne.CanvasObject {
-	v, err := m.initialRead()
-	if err != nil {
-		v = m.Default
-		m.Error(fmt.Errorf("initial read: %w", err))
-	} else {
-		m.Default = v
-	}
-	conf := fyneutil.SliderWithTrackedInput{
-		Min:     m.Min,
-		Max:     m.Max,
-		Default: v,
-		OnEditSlider: func(_ *widget.Slider, _, new float64) {
-			m.write(new)
-		},
-	}
-	slider, input := conf.Create()
-	return []fyne.CanvasObject{slider, input}
+func (m *floatPointerModule) CreateObjects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{m.slider, m.input}
 }
 
-func (m *FloatPointerModule) Disable() {
-	m.write(m.Default) // already normalizes !!!
+func (m *floatPointerModule) Set(v float64) error {
+	m.slider.SetValue(v)
+	return nil
 }
 
-func (m *FloatPointerModule) write(val float64) {
+func (m *floatPointerModule) Disable() {
+	m.forceWrite(m.def) // already normalizes !!!
+}
+
+func (m *floatPointerModule) Value() (float64, bool) {
+	m.val.RLock()
+	defer m.val.RUnlock()
+
+	if !m.val.notFirst {
+		return 0, false
+	}
+	return m.val.v, true
+}
+
+func (m *floatPointerModule) write(val float64) error {
 	m.val.Lock()
 	defer m.val.Unlock()
 
 	if m.val.notFirst && mgl64.FloatEqual(m.val.v, val) {
 		// new value is same as current
-		return
+		return fmt.Errorf("new value is same as current (%g)", val)
 	}
 	addr, err := m.resolveAddress()
 	if err != nil {
-		m.Error(fmt.Errorf("write %g: %w", val, err))
-		return
+		return fmt.Errorf("resolve address: %w", err)
 	}
-	toWrite := m.SliderToMemory(val)
-	if err = win.WriteMemory[float32](m.Process, addr, toWrite); err != nil {
-		m.Error(fmt.Errorf("write %g: write memory: %w", val, err))
-		return
+	toWrite := m.sToM(val)
+	if err = win.WriteMemory[float32](m.proc, addr, toWrite); err != nil {
+		return fmt.Errorf("write memory: %w", err)
 	}
 	m.val.v = val
+	m.val.notFirst = true
+	return nil
 }
 
-func (m *FloatPointerModule) Value() float64 {
-	m.val.RLock()
-	defer m.val.RUnlock()
-	return m.val.v
+func (m *floatPointerModule) forceWrite(val float64) bool {
+	err := m.write(val)
+	if err != nil {
+		m.err(fmt.Errorf("write %g: %w", val, err))
+		return false
+	}
+	return true
 }
 
-func (m *FloatPointerModule) initialRead() (float64, error) {
+func (m *floatPointerModule) initialRead() (float64, error) {
 	addr, err := m.resolveAddress()
 	if err != nil {
 		return 0, fmt.Errorf("resolve address: %w", err)
 	}
-	v, err := win.ReadMemory[float32](m.Process, addr)
+	v, err := win.ReadMemory[float32](m.proc, addr)
 	if err != nil {
 		return 0, fmt.Errorf("read memory: %w", err)
 	}
 	// don't forget to normalize value
-	return m.MemoryToSlider(v), nil
+	return m.mToS(v), nil
 }
 
-func (m *FloatPointerModule) resolveAddress() (uintptr, error) {
-	if m.addr != 0 {
-		return m.addr, nil
+func (m *floatPointerModule) resolveAddress() (uintptr, error) {
+	if m.a != 0 {
+		return m.a, nil
 	}
-	addr, err := win.ResolvePointerAddress(m.Process, m.Process.Module, m.BaseAddress, m.Offsets)
+	addr, err := win.ResolvePointerAddress(m.proc, m.proc.Module, m.baseAddr, m.offsets)
 	if err != nil {
 		return 0, err
 	}
-	m.addr = addr
+	m.a = addr
 	return addr, nil
 }

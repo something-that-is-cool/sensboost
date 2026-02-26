@@ -17,17 +17,19 @@ var (
 var _ module.Module = (*controllerSensitivity)(nil)
 
 type ControllerSensitivity struct {
-	Process *win.Process
-	Error   func(error)
+	Process  *win.Process
+	Error    func(error)
+	OnChange func(float64)
 }
 
-func (conf ControllerSensitivity) Create() module.Module {
-	return &controllerSensitivity{FloatPointerModule: &modulesutil.FloatPointerModule{
-		Process: conf.Process,
-		Error:   conf.Error,
-		Min:     1,
-		Max:     300,
-		Default: 100,
+func (conf *ControllerSensitivity) Create(p module.Property) module.Module {
+	c := &controllerSensitivity{ModuleWithValue: (&modulesutil.FloatPointerModule{
+		Process:  conf.Process,
+		Error:    conf.Error,
+		OnChange: conf.OnChange,
+		Min:      1,
+		Max:      300,
+		Default:  100,
 		SliderToMemory: func(f float64) float32 {
 			return float32(math.Ceil(f)) / 100
 		},
@@ -36,11 +38,29 @@ func (conf ControllerSensitivity) Create() module.Module {
 		},
 		BaseAddress: baseAddress,
 		Offsets:     offsets,
-	}}
+	}).New()}
+	// sync the state
+	if v, ok := p.Value.(float64); ok {
+		_ = c.Set(v)
+	}
+	return c
+}
+
+// DefaultProperty ...
+func (*ControllerSensitivity) DefaultProperty() module.Property {
+	return module.Property{
+		Enabled: false,
+		Value:   100.0,
+	}
+}
+
+// Identifier ...
+func (*ControllerSensitivity) Identifier() string {
+	return "controller_sensitivity"
 }
 
 type controllerSensitivity struct {
-	*modulesutil.FloatPointerModule
+	modulesutil.ModuleWithValue[float64]
 }
 
 // Name ...
@@ -53,7 +73,11 @@ func (*controllerSensitivity) Description() string {
 	return "allows to modify controller sensitivity to values higher than 100"
 }
 
-// Identifier ...
-func (*controllerSensitivity) Identifier() string {
-	return "controller_sensitivity"
+// Edit ...
+func (c *controllerSensitivity) Edit(p module.Property) {
+	v, ok := p.Value.(float64)
+	if !ok {
+		return
+	}
+	_ = c.Set(v)
 }

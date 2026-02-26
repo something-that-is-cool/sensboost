@@ -41,6 +41,9 @@ func (tr *ProcessTracker) Close() bool {
 	if !tr.closed.CompareAndSwap(false, true) {
 		return false
 	}
+	if !tr.running.Load() {
+		return true
+	}
 	tr.cancel()
 	return true
 }

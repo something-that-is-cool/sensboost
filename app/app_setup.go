@@ -1,52 +1,44 @@
 package app
 
 import (
+	"github.com/elliotchance/orderedmap/v3"
 	"github.com/something-that-is-cool/zutil/app/module"
-	"github.com/something-that-is-cool/zutil/app/module/modules"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
-func (app *App) setupModules(proc *win.Process) []module.Module {
-	return []module.Module{
-		app.createControllerSensitivityModule(proc),
-		app.createNoDynamicFovModule(proc),
-		app.createNoHurtCamModule(proc),
-		app.createAutoSprintModule(proc),
-		app.createNoParticleModule(proc),
+func (app *App) createModulesFromConfigs(configs []module.Config) *orderedmap.OrderedMap[module.Config, module.Module] {
+	type toCreateModule struct {
+		Config   module.Config
+		Property module.Property
 	}
+	modules := orderedmap.NewOrderedMap[module.Config, module.Module]()
+	toCreate := make([]toCreateModule, 0, len(configs))
+
+	func() {
+		app.uConfMu.Lock()
+		defer app.uConfMu.Unlock()
+		// uConf must not be nil here because it is init func
+		for _, conf := range configs {
+			property := app.mustExtractPropertyUnsafe(conf)
+			toCreate = append(toCreate, toCreateModule{Config: conf, Property: property})
+		}
+	}()
+	// creating all modules within of the mutex !!!
+	for _, m := range toCreate {
+		modules.Set(m.Config, m.Config.Create(m.Property))
+	}
+	return modules
 }
 
-func (app *App) createControllerSensitivityModule(proc *win.Process) module.Module {
-	return modules.ControllerSensitivity{
-		Process: proc,
-		Error:   app.onError("controller_sensitivity"),
-	}.Create()
-}
-
-func (app *App) createNoDynamicFovModule(proc *win.Process) module.Module {
-	return modules.NoDynamicFov{
-		Process: proc,
-		Error:   app.onError("no_dynamic_fov"),
-	}.Create()
-}
-
-func (app *App) createNoHurtCamModule(proc *win.Process) module.Module {
-	return modules.NoHurtCam{
-		Process: proc,
-		Error:   app.onError("no_hurt_cam"),
-	}.Create()
-}
-
-func (app *App) createAutoSprintModule(proc *win.Process) module.Module {
-	return modules.AutoSprint{
-		Process: proc,
-		Error:   app.onError("auto_sprint"),
-	}.Create()
-}
-
-func (app *App) createNoParticleModule(proc *win.Process) module.Module {
-	return modules.NoParticle{
-		Process: proc,
-		Error:   app.onError("no_particle"),
-	}.Create()
+func (app *App) mustExtractPropertyUnsafe(conf module.Config) module.Property {
+	property := conf.DefaultProperty()
+	// check for value in user config
+	v, ok := app.uConf.Modules[conf.Identifier()]
+	if ok {
+		// extract property from module value
+		property = v
+	} else {
+		// add default property to config
+		app.uConf.Modules[conf.Identifier()] = property
+	}
+	return property
 }

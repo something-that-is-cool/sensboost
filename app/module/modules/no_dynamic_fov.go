@@ -11,20 +11,35 @@ var _ module.Module = (*noDynamicFov)(nil)
 var noDynamicFovSig = []byte{0xF3, 0x0F, 0x11, 0x83, 0x78, 0x12, 0x00, 0x00}
 
 type NoDynamicFov struct {
-	Process *win.Process
-	Error   func(error)
+	Process  *win.Process
+	Error    func(error)
+	OnChange func(bool)
 }
 
-func (conf NoDynamicFov) Create() module.Module {
-	return &noDynamicFov{SigToggleModule: &modulesutil.SigToggleModule{
+func (conf *NoDynamicFov) Create(p module.Property) module.Module {
+	n := &noDynamicFov{ToggleableModule: (&modulesutil.SigToggleModule{
 		Signature: noDynamicFovSig,
 		Process:   conf.Process,
 		Error:     conf.Error,
-	}}
+		OnChange:  conf.OnChange,
+	}).New()}
+	// sync state
+	_ = n.Set(p.Enabled)
+	return n
+}
+
+// DefaultProperty ...
+func (*NoDynamicFov) DefaultProperty() module.Property {
+	return module.Property{Enabled: false}
+}
+
+// Identifier ...
+func (*NoDynamicFov) Identifier() string {
+	return "no_dynamic_fov"
 }
 
 type noDynamicFov struct {
-	*modulesutil.SigToggleModule
+	modulesutil.ToggleableModule
 }
 
 // Name ...
@@ -37,7 +52,7 @@ func (*noDynamicFov) Description() string {
 	return "forces game to think that your field of view is static"
 }
 
-// Identifier ...
-func (*noDynamicFov) Identifier() string {
-	return "no_dynamic_fov"
+// Edit ...
+func (n *noDynamicFov) Edit(p module.Property) {
+	_ = n.Set(p.Enabled)
 }
