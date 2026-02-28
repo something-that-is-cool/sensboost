@@ -12,6 +12,8 @@ import (
 	"github.com/go-vgo/robotgo"
 	"github.com/something-that-is-cool/zutil/app"
 	"github.com/something-that-is-cool/zutil/internal/misc"
+
+	_ "github.com/ebitengine/hideconsole"
 )
 
 var config = app.Config{
@@ -33,7 +35,7 @@ func main() {
 		doPanic(fmt.Errorf("error creating app: %w", err))
 	}
 	log.Info("created app instance.")
-	defer a.Close() //nolint:errcheck
+	defer a.CloseMain() //nolint:errcheck
 
 	log.Info("starting app...")
 	if err = a.Run(); err != nil {

@@ -132,6 +132,10 @@ func (app *App) Close() error {
 	return app.close(false, nil)
 }
 
+func (app *App) CloseMain() error {
+	return app.close(true, nil)
+}
+
 func (app *App) close(main bool, cause error) error {
 	if !app.closed.CompareAndSwap(false, true) {
 		return ErrAppClosed

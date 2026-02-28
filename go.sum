@@ -1,5 +1,3 @@
-fyne.io/fyne/v2 v2.7.2 h1:XiNpWkn0PzX43ZCjbb0QYGg1RCxVbugwfVgikWZBCMw=
-fyne.io/fyne/v2 v2.7.2/go.mod h1:PXbqY3mQmJV3J1NRUR2VbVgUUx3vgvhuFJxyjRK/4Ug=
 fyne.io/fyne/v2 v2.7.3 h1:xBT/iYbdnNHONWO38fZMBrVBiJG8rV/Jypmy4tVfRWE=
 fyne.io/fyne/v2 v2.7.3/go.mod h1:gu+dlIcZWSzKZmnrY8Fbnj2Hirabv2ek+AKsfQ2bBlw=
 fyne.io/systray v1.12.0 h1:CA1Kk0e2zwFlxtc02L3QFSiIbxJ/P0n582YrZHT7aTM=
@@ -13,6 +11,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dblohm7/wingoes v0.0.0-20250822163801-6d8e6105c62d h1:QRKpU+9ZBDs62LyBfwhZkJdB5DJX2Sm3p4kUh7l1aA0=
 github.com/dblohm7/wingoes v0.0.0-20250822163801-6d8e6105c62d/go.mod h1:SUxUaAK/0UG5lYyZR1L1nC4AaYYvSSYTWQSH3FPcxKU=
+github.com/ebitengine/hideconsole v1.0.0 h1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj1yReDqE=
+github.com/ebitengine/hideconsole v1.0.0/go.mod h1:hTTBTvVYWKBuxPr7peweneWdkUwEuHuB3C1R/ielR1A=
 github.com/ebitengine/purego v0.10.0 h1:QIw4xfpWT6GWTzaW5XEKy3HXoqrJGx1ijYHzTF0/ISU=
 github.com/ebitengine/purego v0.10.0/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
 github.com/elliotchance/orderedmap/v3 v3.1.0 h1:j4DJ5ObEmMBt/lcwIecKcoRxIQUEnw0L804lXYDt/pg=
