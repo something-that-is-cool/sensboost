@@ -80,7 +80,7 @@ func ScanSignature(p *Process, size, base uintptr, pattern []byte) (uintptr, err
 	var bytesRead uintptr
 
 	err := w.ReadProcessMemory(p.Handle, base, &moduleData[0], size, &bytesRead)
-	if err != nil && bytesRead == 0 {
+	if err != nil && bytesRead <= 0 {
 		return 0, fmt.Errorf("read: %w", err)
 	}
 	for i := 0; i < int(bytesRead)-len(pattern); i++ {
