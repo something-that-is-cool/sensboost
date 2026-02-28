@@ -15,13 +15,17 @@ func NopSig(n int) (x []byte) {
 }
 
 type SignatureNopTogglerConfig struct {
-	Process      *Process
-	Module, Size uintptr
-	Signature    []byte
+	Process           *Process
+	Module, Size      uintptr
+	Signature, NopSig []byte
 }
 
 func (conf SignatureNopTogglerConfig) New() (*SignatureNopToggler, error) {
-	toggler := &SignatureNopToggler{pr: conf.Process, mod: conf.Module, sig: conf.Signature}
+	toggler := &SignatureNopToggler{
+		pr:  conf.Process,
+		mod: conf.Module,
+		sig: conf.Signature,
+	}
 	if err := toggler.scanAddress(conf.Size); err != nil {
 		return nil, fmt.Errorf("initial sig scan: %w", err)
 	}
@@ -31,9 +35,9 @@ func (conf SignatureNopTogglerConfig) New() (*SignatureNopToggler, error) {
 // SignatureNopToggler allows to toggle signature between no operation and
 // normal state.
 type SignatureNopToggler struct {
-	pr  *Process
-	mod uintptr
-	sig []byte
+	pr       *Process
+	mod      uintptr
+	sig, nop []byte
 
 	addr  uintptr
 	state atomic.Bool
@@ -60,8 +64,15 @@ func (t *SignatureNopToggler) Enabled() bool {
 	return t.state.Load()
 }
 
+func (t *SignatureNopToggler) mustNopSig() []byte {
+	if t.nop == nil {
+		t.nop = NopSig(len(t.sig))
+	}
+	return t.nop
+}
+
 func (t *SignatureNopToggler) enable() error {
-	if err := Patch(t.pr, t.addr, NopSig(len(t.sig))); err != nil {
+	if err := Patch(t.pr, t.addr, t.mustNopSig()); err != nil {
 		return fmt.Errorf("patch (nop bytes): %w", err)
 	}
 	t.state.Store(true)
@@ -85,7 +96,7 @@ func (t *SignatureNopToggler) scanAddress(size uintptr) error {
 		t.addr = addr
 		return nil
 	}
-	addr, err = ScanSignature(t.pr, size, t.mod, NopSig(len(t.sig)))
+	addr, err = ScanSignature(t.pr, size, t.mod, t.mustNopSig())
 	if err == nil {
 		t.addr = addr
 		// if we found sig replaced with nop sig it means it was already enabled

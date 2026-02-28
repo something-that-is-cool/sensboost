@@ -10,6 +10,7 @@ import (
 
 type SigToggleModule struct {
 	Signature []byte
+	NopSig    []byte
 	Offset    uintptr
 	Process   *win.Process
 	Error     func(error)
@@ -19,6 +20,7 @@ type SigToggleModule struct {
 func (conf SigToggleModule) New() ToggleableModule {
 	s := &sigToggleModule{
 		sig:    conf.Signature,
+		nop:    conf.NopSig,
 		offset: conf.Offset,
 		proc:   conf.Process,
 		err:    conf.Error,
@@ -41,10 +43,10 @@ func (conf SigToggleModule) New() ToggleableModule {
 var _ ToggleableModule = (*sigToggleModule)(nil)
 
 type sigToggleModule struct {
-	sig    []byte
-	offset uintptr
-	proc   *win.Process
-	err    func(error)
+	sig, nop []byte
+	offset   uintptr
+	proc     *win.Process
+	err      func(error)
 
 	check *widget.Check
 
@@ -74,6 +76,7 @@ func (m *sigToggleModule) lazyToggler() (*win.SignatureNopToggler, error) {
 		Module:    m.proc.Module,
 		Size:      m.proc.ModuleSize,
 		Signature: m.sig,
+		NopSig:    m.nop,
 	}
 	t, err := conf.New()
 	if err != nil {

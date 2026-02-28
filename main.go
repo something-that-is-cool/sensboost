@@ -33,7 +33,7 @@ func main() {
 		doPanic(fmt.Errorf("error creating app: %w", err))
 	}
 	log.Info("created app instance.")
-	defer a.Close(true) //nolint:errcheck
+	defer a.Close() //nolint:errcheck
 
 	log.Info("starting app...")
 	if err = a.Run(); err != nil {

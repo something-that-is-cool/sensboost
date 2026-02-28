@@ -102,7 +102,7 @@ func (app *App) Run() error {
 	app.conf.Logger.Debug("initialized.")
 	go func() {
 		<-app.ctx.Done()
-		if err := app.Close(false); err != nil && !errors.Is(err, ErrAppClosed) {
+		if err := app.close(false, closeCauseContextClosed); err != nil && !errors.Is(err, ErrAppClosed) {
 			app.conf.Logger.Error("close app", "err", err.Error())
 		}
 	}()
@@ -127,34 +127,29 @@ func (app *App) Run() error {
 	return nil
 }
 
-// Close ...
-func (app *App) Close(main bool) error {
+// Close implements io.Closer.
+func (app *App) Close() error {
+	return app.close(false, nil)
+}
+
+func (app *App) close(main bool, cause error) error {
 	if !app.closed.CompareAndSwap(false, true) {
 		return ErrAppClosed
+	}
+	if cause == nil {
+		cause = closeCauseExternal
 	}
 	app.conf.Logger.Info("closing app...")
 	defer app.conf.Logger.Info("closed app.")
 
-	// in case of panic do this pattern to defer unlock
-	func() {
-		app.conf.Logger.Debug("disabling modules...")
-		defer app.conf.Logger.Debug("disabled modules.")
-
-		app.data.Lock()
-		defer app.data.Unlock()
-
-		if app.data.modules == nil {
-			// concurrent close call
-			return
-		}
+	// if closed because parent process closed, we don't need to disable
+	// all modules as it will not affect
+	if !errors.Is(cause, closeCauseTrackerClosed) {
 		// disable all modules before canceling context
 		// if we will not do this any logic that takes our context can end
 		// earlier so it won't disable modules properly
-		for _, m := range app.data.modules.AllFromFront() {
-			m.Disable()
-			app.conf.Logger.Debug("disabled module.", "module", m.Name())
-		}
-	}()
+		app.disableModules()
+	}
 	// after we disabled all modules we can close the context safely
 	app.cancel()
 	app.tr.Close()
@@ -173,6 +168,23 @@ func (app *App) Close(main bool) error {
 	}
 	app.closeWin()
 	return nil
+}
+
+func (app *App) disableModules() {
+	app.conf.Logger.Debug("disabling modules...")
+	defer app.conf.Logger.Debug("disabled modules.")
+
+	app.data.Lock()
+	defer app.data.Unlock()
+
+	if app.data.modules == nil {
+		// concurrent close call
+		return
+	}
+	for _, m := range app.data.modules.AllFromFront() {
+		m.Disable()
+		app.conf.Logger.Debug("disabled module.", "module", m.Name())
+	}
 }
 
 func (app *App) closeWin() {
