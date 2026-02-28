@@ -13,7 +13,7 @@ var noHurtCamSig = []byte{0x66, 0x44, 0x0F, 0x6E, 0x83, 0x6C, 0x0E, 0x00, 0x00}
 type NoHurtCam struct {
 	Process  *win.Process
 	Error    func(error)
-	OnChange func(bool)
+	OnToggle func(bool)
 }
 
 func (conf *NoHurtCam) Create(p module.Property) module.Module {
@@ -21,7 +21,7 @@ func (conf *NoHurtCam) Create(p module.Property) module.Module {
 		Signature: noHurtCamSig,
 		Process:   conf.Process,
 		Error:     conf.Error,
-		OnChange:  conf.OnChange,
+		OnToggle:  conf.OnToggle,
 	}).New()}
 	// sync state
 	_ = n.Set(p.Enabled)

@@ -46,9 +46,9 @@ type App struct {
 func (app *App) init(proc *win.Process) (err error) {
 	app.data.Lock()
 	defer app.data.Unlock()
-	app.deployFyne()
+	a := app.deployFyne()
 
-	app.uConf, err = app.loadUserConfigUnsafe()
+	app.uConf, err = app.loadUserConfigUnsafe(a)
 	if err != nil {
 		return fmt.Errorf("load user config: %w", err)
 	}
@@ -73,7 +73,7 @@ func (app *App) init(proc *win.Process) (err error) {
 
 const windowWidth, windowHeight = 400, 550
 
-func (app *App) deployFyne() {
+func (app *App) deployFyne() fyne.App {
 	app.data.app = fyneapp.NewWithID(ID)
 	app.data.win = app.data.app.NewWindow(Name)
 
@@ -81,6 +81,7 @@ func (app *App) deployFyne() {
 	app.data.win.CenterOnScreen()
 	app.data.win.Resize(fyne.NewSize(windowWidth, windowHeight))
 	app.data.win.SetFixedSize(true)
+	return app.data.app
 }
 
 var ErrAppClosed = errors.New("app closed")
@@ -97,6 +98,7 @@ func (app *App) Run() error {
 	}
 	app.conf.Logger.Debug("initializing...")
 	if err := app.init(app.tr.Process()); err != nil {
+		app.started.Store(false)
 		return fmt.Errorf("init: %w", err)
 	}
 	app.conf.Logger.Debug("initialized.")
@@ -140,25 +142,32 @@ func (app *App) close(main bool, cause error) error {
 	if !app.closed.CompareAndSwap(false, true) {
 		return ErrAppClosed
 	}
-	if cause == nil {
-		cause = closeCauseExternal
-	}
 	app.conf.Logger.Info("closing app...")
 	defer app.conf.Logger.Info("closed app.")
 
-	// if closed because parent process closed, we don't need to disable
-	// all modules as it will not affect
-	if !errors.Is(cause, closeCauseTrackerClosed) {
-		// disable all modules before canceling context
-		// if we will not do this any logic that takes our context can end
-		// earlier so it won't disable modules properly
-		app.disableModules()
+	if cause == nil {
+		cause = closeCauseExternal
 	}
-	// after we disabled all modules we can close the context safely
-	app.cancel()
-	app.tr.Close()
-	// save the user config
-	app.saveUserConfig()
+	func() {
+		app.data.Lock()
+		defer app.data.Unlock() // release lock earlier because we don't want to lock until wg done
+
+		if app.started.Load() {
+			// save the user config
+			app.saveUserConfig(app.data.app)
+			// if closed because parent process closed, we don't need to disable
+			// all modules as it will not affect
+			if !errors.Is(cause, closeCauseTrackerClosed) {
+				// disable all modules before canceling context
+				// if we will not do this any logic that takes our context can end
+				// earlier so it won't disable modules properly
+				app.disableModulesUnsafe()
+			}
+		}
+		// after we disabled all modules we can close the context safely
+		app.cancel()
+		app.tr.Close()
+	}()
 	// wait for additional things to end
 	app.conf.Logger.Debug("waiting for waitgroup end...")
 	app.wg.Wait()
@@ -166,25 +175,18 @@ func (app *App) close(main bool, cause error) error {
 	app.conf.Logger.Debug("closing window...")
 	// close window last of all !!!
 	if !main {
-		//fixme:hack
-		fyne.Do(app.closeWin)
+		//fixme:hack that prevents random window deadlock on close
+		fyne.Do(app.closeWin) // fyne.DoAndWait
 		return nil
 	}
 	app.closeWin()
 	return nil
 }
 
-func (app *App) disableModules() {
+func (app *App) disableModulesUnsafe() {
 	app.conf.Logger.Debug("disabling modules...")
 	defer app.conf.Logger.Debug("disabled modules.")
 
-	app.data.Lock()
-	defer app.data.Unlock()
-
-	if app.data.modules == nil {
-		// concurrent close call
-		return
-	}
 	for _, m := range app.data.modules.AllFromFront() {
 		m.Disable()
 		app.conf.Logger.Debug("disabled module.", "module", m.Name())

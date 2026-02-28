@@ -14,7 +14,7 @@ type SigToggleModule struct {
 	Offset    uintptr
 	Process   *win.Process
 	Error     func(error)
-	OnChange  func(bool)
+	OnToggle  func(bool)
 }
 
 func (conf SigToggleModule) New() ToggleableModule {
@@ -34,7 +34,7 @@ func (conf SigToggleModule) New() ToggleableModule {
 		if err = toggler.Set(b); err != nil {
 			return fmt.Errorf("update sig toggler state: %w", err)
 		}
-		conf.OnChange(b)
+		conf.OnToggle(b)
 		return nil
 	})
 	return s

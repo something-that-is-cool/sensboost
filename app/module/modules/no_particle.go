@@ -11,7 +11,7 @@ var particleSig = []byte{0xE8, 0x68, 0x4F, 0xCF, 0xFF}
 type NoParticle struct {
 	Process  *win.Process
 	Error    func(error)
-	OnChange func(bool)
+	OnToggle func(bool)
 }
 
 func (conf *NoParticle) Create(p module.Property) module.Module {
@@ -19,7 +19,7 @@ func (conf *NoParticle) Create(p module.Property) module.Module {
 		Signature: particleSig,
 		Process:   conf.Process,
 		Error:     conf.Error,
-		OnChange:  conf.OnChange,
+		OnToggle:  conf.OnToggle,
 	}).New()}
 	// sync state
 	_ = n.Set(p.Enabled)

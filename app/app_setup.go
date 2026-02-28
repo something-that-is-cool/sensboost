@@ -22,7 +22,7 @@ func (app *App) createModulesFromConfigs(configs []module.Config) *orderedmap.Or
 			toCreate = append(toCreate, toCreateModule{Config: conf, Property: property})
 		}
 	}()
-	// creating all modules within of the mutex !!!
+	// creating all modules within of the uConfMu !!!
 	for _, m := range toCreate {
 		modules.Set(m.Config, m.Config.Create(m.Property))
 	}

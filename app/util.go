@@ -31,15 +31,3 @@ func (app *App) doModuleUpdates(updates map[module.Module]module.Property) {
 		m.Edit(property)
 	}
 }
-
-func propertyFromValue(v any) (p module.Property) {
-	if p, ok := v.(module.Property); ok {
-		return p
-	}
-	if val, ok := v.(bool); ok {
-		p.Enabled = val
-		return p
-	}
-	p.Value = v
-	return p
-}

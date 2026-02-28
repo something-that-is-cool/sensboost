@@ -15,7 +15,7 @@ type ByteToggleModule struct {
 	Patch     []byte
 	Process   *win.Process
 	Error     func(error)
-	OnChange  func(bool)
+	OnToggle  func(bool)
 }
 
 func (conf ByteToggleModule) New() ToggleableModule {
@@ -36,7 +36,7 @@ func (conf ByteToggleModule) New() ToggleableModule {
 		if err = toggler.Set(b); err != nil {
 			return fmt.Errorf("update byte toggler state: %w", err)
 		}
-		conf.OnChange(b)
+		conf.OnToggle(b)
 		return nil
 	})
 	return m

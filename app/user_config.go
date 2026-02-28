@@ -2,11 +2,11 @@ package app
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"fyne.io/fyne/v2"
 	"github.com/something-that-is-cool/zutil/app/module"
 )
 
@@ -24,12 +24,10 @@ func DefaultUserConfig() *UserConfig {
 
 const ConfigFilename = "config.json"
 
-func (app *App) loadUserConfigUnsafe() (conf *UserConfig, err error) {
-	root, ok := app.getRootPath(false)
-	if !ok {
-		return nil, errors.New("fyne app is not initialized")
-	}
+func (app *App) loadUserConfigUnsafe(a fyne.App) (conf *UserConfig, err error) {
+	root := app.getRootPath(a)
 	path := filepath.Join(root, ConfigFilename)
+
 	_ = os.MkdirAll(filepath.Dir(path), 0755)
 
 	d, err := os.ReadFile(path)
@@ -53,11 +51,8 @@ func (app *App) loadUserConfigUnsafe() (conf *UserConfig, err error) {
 
 // ref: github.com/gameparrot/netherconnect
 
-func (app *App) saveUserConfig() {
-	root, ok := app.getRootPath(true)
-	if !ok {
-		return
-	}
+func (app *App) saveUserConfig(a fyne.App) {
+	root := app.getRootPath(a)
 	path := filepath.Join(root, ConfigFilename)
 
 	app.uConfMu.Lock()
@@ -74,16 +69,9 @@ func (app *App) saveUserConfig() {
 	app.conf.Logger.Debug("saved user config.", "path", path)
 }
 
-func (app *App) getRootPath(safe bool) (string, bool) {
-	if safe {
-		app.data.Lock()
-		defer app.data.Unlock()
-	}
-	if app.data.app == nil {
-		return "", false
-	}
-	root := app.data.app.Storage().RootURI().Path()
-	return root, true
+func (app *App) getRootPath(a fyne.App) string {
+	root := a.Storage().RootURI().Path()
+	return root
 }
 
 const filePerm = 0777
@@ -99,15 +87,30 @@ func (app *App) writeConfig(conf *UserConfig, path string) (err error) {
 	return nil
 }
 
-func onModuleChange[T any](app *App, id string) func(T) {
+func (app *App) onModuleToggled(id string) func(bool) {
+	return func(b bool) {
+		app.editProperty(id, func(p *module.Property) {
+			p.Enabled = b
+		})
+	}
+}
+
+func onModuleValueChanged[T any](app *App, id string) func(T) {
+	return func(v T) {
+		app.editProperty(id, func(p *module.Property) {
+			p.Value = v
+		})
+	}
+}
+
+func (app *App) editProperty(id string, fn func(*module.Property)) {
 	// this func is called when module created
 	// module is created after uConf initialized, so it must not be nil
-	return func(v T) {
-		app.uConfMu.Lock()
-		defer app.uConfMu.Unlock()
+	app.uConfMu.Lock()
+	defer app.uConfMu.Unlock()
 
-		app.uConf.Modules[id] = propertyFromValue(v)
-		// log the status
-		app.conf.Logger.Info("module value changed", "module", id, "new_value", v)
-	}
+	p := app.uConf.Modules[id]
+	fn(&p)
+	// update the property
+	app.uConf.Modules[id] = p
 }

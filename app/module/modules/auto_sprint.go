@@ -16,7 +16,7 @@ var (
 type AutoSprint struct {
 	Process  *win.Process
 	Error    func(error)
-	OnChange func(bool)
+	OnToggle func(bool)
 }
 
 func (conf *AutoSprint) Create(p module.Property) module.Module {
@@ -25,7 +25,7 @@ func (conf *AutoSprint) Create(p module.Property) module.Module {
 		Patch:     autoSprintPatch,
 		Process:   conf.Process,
 		Error:     conf.Error,
-		OnChange:  conf.OnChange,
+		OnToggle:  conf.OnToggle,
 	}).New()}
 	// sync the state
 	_ = m.Set(p.Enabled)

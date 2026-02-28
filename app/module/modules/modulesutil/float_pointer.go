@@ -22,7 +22,7 @@ type FloatPointerModule struct { // so float64 would be DoublePointerModule
 	BaseAddress uintptr
 	Offsets     []uintptr
 
-	OnChange func(float64)
+	OnValueChanged func(float64)
 }
 
 // New ...
@@ -51,7 +51,7 @@ func (conf FloatPointerModule) New() ModuleWithValue[float64] {
 			if !f.forceWrite(new) {
 				return
 			}
-			conf.OnChange(new)
+			conf.OnValueChanged(new)
 		},
 	}
 	f.slider, f.input = c.Create()

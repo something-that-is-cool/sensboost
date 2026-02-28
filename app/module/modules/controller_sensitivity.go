@@ -17,19 +17,19 @@ var (
 var _ module.Module = (*controllerSensitivity)(nil)
 
 type ControllerSensitivity struct {
-	Process  *win.Process
-	Error    func(error)
-	OnChange func(float64)
+	Process        *win.Process
+	Error          func(error)
+	OnValueChanged func(float64)
 }
 
 func (conf *ControllerSensitivity) Create(p module.Property) module.Module {
 	c := &controllerSensitivity{ModuleWithValue: (&modulesutil.FloatPointerModule{
-		Process:  conf.Process,
-		Error:    conf.Error,
-		OnChange: conf.OnChange,
-		Min:      1,
-		Max:      300,
-		Default:  100,
+		Process:        conf.Process,
+		Error:          conf.Error,
+		OnValueChanged: conf.OnValueChanged,
+		Min:            1,
+		Max:            300,
+		Default:        100,
 		SliderToMemory: func(f float64) float32 {
 			return float32(math.Ceil(f)) / 100
 		},

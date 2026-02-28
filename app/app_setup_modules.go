@@ -21,7 +21,7 @@ func (app *App) createControllerSensitivityModule(proc *win.Process) module.Conf
 		Process: proc,
 		Error:   app.onError("controller_sensitivity"),
 	}
-	conf.OnChange = onModuleChange[float64](app, conf.Identifier())
+	conf.OnValueChanged = onModuleValueChanged[float64](app, conf.Identifier())
 	return conf
 }
 
@@ -30,7 +30,7 @@ func (app *App) createNoDynamicFovModule(proc *win.Process) module.Config {
 		Process: proc,
 		Error:   app.onError("no_dynamic_fov"),
 	}
-	conf.OnChange = onModuleChange[bool](app, conf.Identifier())
+	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
@@ -39,7 +39,7 @@ func (app *App) createNoHurtCamModule(proc *win.Process) module.Config {
 		Process: proc,
 		Error:   app.onError("no_hurt_cam"),
 	}
-	conf.OnChange = onModuleChange[bool](app, conf.Identifier())
+	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
@@ -48,7 +48,7 @@ func (app *App) createAutoSprintModule(proc *win.Process) module.Config {
 		Process: proc,
 		Error:   app.onError("auto_sprint"),
 	}
-	conf.OnChange = onModuleChange[bool](app, conf.Identifier())
+	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
@@ -57,7 +57,7 @@ func (app *App) createNoParticleModule(proc *win.Process) module.Config {
 		Process: proc,
 		Error:   app.onError("no_particle"),
 	}
-	conf.OnChange = onModuleChange[bool](app, conf.Identifier())
+	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
