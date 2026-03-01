@@ -7,20 +7,19 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
 )
 
-func (app *App) createContent(modules *modulesMap) (fyne.CanvasObject, error) {
+func (app *App) createContent(modules *modulesMap, w fyne.Window) (fyne.CanvasObject, error) {
 	f, err := app.createFooter()
 	if err != nil {
 		return nil, fmt.Errorf("create footer: %w", err)
 	}
 	var obj []fyne.CanvasObject
-	for _, mod := range modules.AllFromFront() {
-		window := app.createModuleWindow(mod)
+	for c, mod := range modules.AllFromFront() {
+		window := app.createModuleWindow(mod, c, w)
 		obj = append(obj, window)
 	}
 	a := container.NewGridWithRows(4, obj...)
@@ -28,11 +27,10 @@ func (app *App) createContent(modules *modulesMap) (fyne.CanvasObject, error) {
 	return container.NewVScroll(fyneutil.WithFooter(a, f)), nil
 }
 
-func (app *App) createModuleWindow(m module.Module) fyne.CanvasObject {
+func (app *App) createModuleWindow(m module.Module, c module.Config, win fyne.Window) fyne.CanvasObject {
 	box := container.NewVBox(m.CreateObjects()...)
-	button := fyneutil.NewClickableIcon(theme.InfoIcon(), func() {
-		app.showInfo("Description", m.Description(), true)
-	})
+	button := app.createModuleSettingsObject(m, c, win)
+
 	stack := container.NewStack(
 		box,
 		fyneutil.RightBottomCorner(button),

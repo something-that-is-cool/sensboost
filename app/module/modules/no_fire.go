@@ -58,7 +58,7 @@ func (n *noFire) Name() string {
 
 // Description ...
 func (n *noFire) Description() string {
-	return "prevents game updating onFire flag, force writing 0 (false) when module enbaled"
+	return "prevents game updating onFire flag, force writing 0 (false) when toggling module"
 }
 
 // Edit ...

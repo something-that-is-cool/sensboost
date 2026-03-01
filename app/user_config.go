@@ -12,12 +12,14 @@ import (
 
 type UserConfig struct {
 	Modules    map[string]module.Property `json:"modules"`
+	Binds      map[string]string          `json:"binds"` // module_id => char
 	LightTheme bool                       `json:"light_theme"`
 }
 
 func DefaultUserConfig() *UserConfig {
 	return &UserConfig{
 		Modules:    make(map[string]module.Property),
+		Binds:      make(map[string]string),
 		LightTheme: false,
 	}
 }
@@ -46,7 +48,17 @@ func (app *App) loadUserConfigUnsafe(a fyne.App) (conf *UserConfig, err error) {
 	if err = json.Unmarshal(d, &c); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
+	fillDefaults(&c)
 	return &c, nil
+}
+
+func fillDefaults(c *UserConfig) {
+	if c.Modules == nil {
+		c.Modules = make(map[string]module.Property)
+	}
+	if c.Binds == nil {
+		c.Binds = make(map[string]string)
+	}
 }
 
 // ref: github.com/gameparrot/netherconnect
