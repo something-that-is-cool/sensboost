@@ -11,7 +11,7 @@ var (
 	zoomPatch = []byte{0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x0F, 0x2F}
 )
 
-var _ module.Module = (*noFire)(nil)
+var _ module.Module = (*zoom)(nil)
 
 type Zoom struct {
 	modulesutil.DefaultDisabled
