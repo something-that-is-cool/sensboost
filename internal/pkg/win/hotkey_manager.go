@@ -3,7 +3,6 @@ package win
 import (
 	"context"
 	"errors"
-	"sync"
 	"sync/atomic"
 
 	hook "github.com/robotn/gohook"
@@ -19,7 +18,7 @@ func (conf HotkeyManagerConfig) New() *HotkeyManager {
 	if conf.Handlers == nil {
 		conf.Handlers = make(map[string]func())
 	}
-	m := &HotkeyManager{Events: Events{V: make(map[string]func())}}
+	m := &HotkeyManager{Events: misc.ValueWithRWMutex[map[string]func()]{V: make(map[string]func())}}
 	for k, h := range conf.Handlers {
 		m.Events.V[k] = h
 	}
@@ -33,12 +32,7 @@ type HotkeyManager struct {
 	closed  atomic.Bool
 	running misc.ValueWithMutex[bool]
 
-	Events Events
-}
-
-type Events struct {
-	sync.RWMutex
-	V map[string]func()
+	Events misc.ValueWithRWMutex[map[string]func()]
 }
 
 // Run ...
