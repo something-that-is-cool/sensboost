@@ -24,10 +24,10 @@ func SortByAlphabet(x []string) {
 
 func getAlphabetSortPriority(s string) int {
 	if len(s) != 1 {
-		return 3
+		return len(s) + 2
 	}
 	if InAlphabet(Rune(s)) {
-		return 1
+		return len(s) + 1
 	}
-	return 2
+	return len(s) + 3
 }
