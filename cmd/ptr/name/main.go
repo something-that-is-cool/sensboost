@@ -22,17 +22,20 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("get process module: %w", err))
 	}
-	v, finalAddr, err := win.ResolvePointerValue[[100]byte](proc, module, baseAddr, offsets)
+	v, finalAddr, err := win.ResolvePointerValue[[200]byte](proc, module, baseAddr, offsets)
 	if err != nil {
 		panic(fmt.Errorf("resolve pointer value: %w", err))
 	}
-	_ = finalAddr // do something
-	fmt.Println("resolved float pointer value:", toStr(v))
+	fmt.Printf("resolved float pointer value: %q\n", toStr(v))
+	fmt.Printf("address: 0x%x\n", finalAddr)
 }
 
-func toStr(x [100]byte) (s string) {
-	for _, b := range x {
-		s += string(b)
+func toStr(x [200]byte) (s string) {
+	for _, v := range x[:] {
+		if v == 0 {
+			break
+		}
+		s += string(v)
 	}
-	return s
+	return
 }
