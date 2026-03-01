@@ -8,6 +8,8 @@ require (
 	github.com/elliotchance/orderedmap/v3 v3.1.0
 	github.com/go-gl/mathgl v1.2.0
 	github.com/go-vgo/robotgo v1.0.0
+	github.com/robotn/gohook v0.42.3
+	github.com/samber/lo v1.52.0
 	golang.org/x/sys v0.41.0
 )
 

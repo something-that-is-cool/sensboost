@@ -5,6 +5,8 @@ import (
 	"github.com/something-that-is-cool/zutil/app/module"
 )
 
+type modulesMap = orderedmap.OrderedMap[module.Config, module.Module]
+
 func (app *App) createModulesFromConfigs(configs []module.Config) *modulesMap {
 	type toCreateModule struct {
 		Config   module.Config

@@ -150,6 +150,14 @@ func (app *App) applyConfig(newConf *UserConfig) map[module.Module]module.Proper
 	app.data.Lock()
 	defer app.data.Unlock()
 
+	func() {
+		app.hm.Events.Lock()
+		defer app.hm.Events.Unlock()
+		// clear binds
+		app.hm.ClearHandlersUnsafe()
+		// apply new binds if there are
+		app.applyBindsUnsafe(app.userConf.V)
+	}()
 	toEdit := make(map[module.Module]module.Property)
 	// reset modules to default state
 	for conf, m := range app.data.V.modules.AllFromFront() {
@@ -162,4 +170,14 @@ func (app *App) applyConfig(newConf *UserConfig) map[module.Module]module.Proper
 		toEdit[m] = property
 	}
 	return toEdit
+}
+
+func (app *App) applyBindsUnsafe(conf *UserConfig) {
+	for mod, char := range conf.Binds {
+		m, ok := app.moduleByIDUnsafe(mod)
+		if !ok {
+			continue
+		}
+		app.hm.HandleUnsafe(char, app.bindToggleModule(mod, m))
+	}
 }

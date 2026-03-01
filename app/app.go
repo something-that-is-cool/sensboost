@@ -10,8 +10,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	fyneapp "fyne.io/fyne/v2/app"
-	"github.com/elliotchance/orderedmap/v3"
-	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
@@ -30,6 +28,7 @@ type App struct {
 	wg sync.WaitGroup
 
 	tr *win.ProcessTracker
+	hm *win.HotkeyManager
 
 	closed atomic.Bool
 
@@ -45,20 +44,19 @@ type App struct {
 	}]
 }
 
-type modulesMap = orderedmap.OrderedMap[module.Config, module.Module]
-
 func (app *App) initUnsafe(proc *win.Process) (err error) {
 	if app.data.V.init {
 		return errors.New("already initialized")
 	}
 	app.data.V.init = true // can only initialize once
-	a := app.deployFyneUnsafe()
+	a, w := app.deployFyneUnsafe()
 
+	app.userConf.Lock()
 	app.userConf.V, err = app.loadUserConfigUnsafe(a)
 	if err != nil {
+		app.userConf.Unlock()
 		return fmt.Errorf("load user config: %w", err)
 	}
-	app.userConf.Lock()
 	app.syncThemeUnsafe(app.userConf.V)
 	app.userConf.Unlock()
 
@@ -69,7 +67,11 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 	modules := app.createModulesFromConfigs(configs)
 	app.data.V.modules = modules
 
-	c, err := app.createContent(modules)
+	app.userConf.Lock()
+	app.hm = win.HotkeyManagerConfig{Handlers: app.loadBinds(app.userConf.V)}.New()
+	app.userConf.Unlock()
+
+	c, err := app.createContent(modules, w)
 	if err != nil {
 		return fmt.Errorf("create content: %w", err)
 	}
@@ -77,9 +79,9 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 	return nil
 }
 
-const windowWidth, windowHeight = 400, 550
+const windowWidth, windowHeight = 450, 550
 
-func (app *App) deployFyneUnsafe() fyne.App {
+func (app *App) deployFyneUnsafe() (fyne.App, fyne.Window) {
 	app.data.V.app = fyneapp.NewWithID(ID)
 	app.data.V.win = app.data.V.app.NewWindow(Name)
 
@@ -87,7 +89,7 @@ func (app *App) deployFyneUnsafe() fyne.App {
 	app.data.V.win.CenterOnScreen()
 	app.data.V.win.Resize(fyne.NewSize(windowWidth, windowHeight))
 	app.data.V.win.SetFixedSize(true)
-	return app.data.V.app
+	return app.data.V.app, app.data.V.win
 }
 
 var ErrAppClosed = errors.New("app closed")
@@ -119,6 +121,16 @@ func (app *App) Run() error {
 		}
 		app.conf.Logger.Info("process tracker ended gracefully.")
 	}()
+	app.wg.Go(func() {
+		defer app.doClose("hotkey manager", app.hm.Close)
+		app.conf.Logger.Info("running hotkey manager...")
+
+		if err := app.hm.Run(app.ctx); err != nil && !errors.Is(err, context.Canceled) {
+			app.conf.Logger.Error("hotkey manager cannot run", "err", err.Error())
+			return
+		}
+		app.conf.Logger.Info("hotkey manager ended gracefully.")
+	})
 	app.conf.Logger.Info("running window...")
 	app.setStarted()
 	w.ShowAndRun() // blocks
@@ -200,6 +212,7 @@ func (app *App) closeIfStarted(cause error) {
 			// earlier so it won't disable modules properly
 			app.disableModulesUnsafe()
 		}
+		app.doClose("hotkey manager", app.hm.Close)
 	}
 	// after we disabled all modules we can close the context safely
 	app.cancel()
