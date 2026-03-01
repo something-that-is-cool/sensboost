@@ -14,6 +14,7 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 		app.createAutoSprintModule(proc),
 		app.createNoParticleModule(proc),
 		app.createNoFireModule(proc),
+		app.createZoomModule(proc),
 	}
 }
 
@@ -66,6 +67,15 @@ func (app *App) createNoFireModule(proc *win.Process) module.Config {
 	conf := &modules.NoFire{
 		Process: proc,
 		Error:   app.onError("no_fire"),
+	}
+	conf.OnToggle = app.onModuleToggled(conf.Identifier())
+	return conf
+}
+
+func (app *App) createZoomModule(proc *win.Process) module.Config {
+	conf := &modules.Zoom{
+		Process: proc,
+		Error:   app.onError("zoom"),
 	}
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
