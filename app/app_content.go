@@ -36,10 +36,7 @@ func (app *App) createModuleWindow(m module.Module, c module.Config, win fyne.Wi
 		fyneutil.RightBottomCorner(button),
 	)
 	w := container.NewInnerWindow(m.Name(), stack)
-	w.CloseIntercept = func() {
-		m.Disable()
-		w.Hide()
-	}
+	w.CloseIntercept = func() {}
 	return w
 }
 
