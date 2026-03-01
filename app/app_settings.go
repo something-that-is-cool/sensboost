@@ -33,10 +33,10 @@ func (app *App) createSettingsObject() fyne.CanvasObject {
 		app.showInfo("About", aboutMessage, true)
 	}}
 	toggleTheme := &widget.Button{Icon: theme.VisibilityIcon(), OnTapped: func() {
-		app.uConfMu.Lock()
-		defer app.uConfMu.Unlock()
-		app.uConf.LightTheme = !app.uConf.LightTheme
-		app.syncThemeUnsafe(app.uConf)
+		app.userConf.Lock()
+		defer app.userConf.Unlock()
+		app.userConf.V.LightTheme = !app.userConf.V.LightTheme
+		app.syncThemeUnsafe(app.userConf.V)
 	}}
 	return fyneutil.LeftAndRight(fyneutil.LeftAndRight(toggleTheme, settings), about)
 }
@@ -50,12 +50,12 @@ func (app *App) showSettings() {
 	app.data.Lock()
 	defer app.data.Unlock()
 
-	dialog.ShowCustom("Settings", "Close", content, app.data.win)
+	dialog.ShowCustom("Settings", "Close", content, app.data.V.win)
 }
 
 func (app *App) importConfig() {
 	app.data.Lock()
-	win := app.data.win
+	win := app.data.V.win
 	app.data.Unlock()
 
 	dialog.ShowFileOpen(func(reader fyne.URIReadCloser, err error) {
@@ -95,7 +95,7 @@ func (app *App) doImport(reader fyne.URIReadCloser) error {
 
 func (app *App) exportConfig() {
 	app.data.Lock()
-	win := app.data.win
+	win := app.data.V.win
 	app.data.Unlock()
 
 	dialog.ShowFileSave(func(writer fyne.URIWriteCloser, err error) {
@@ -120,11 +120,11 @@ func (app *App) exportConfig() {
 }
 
 func (app *App) doExport(writer fyne.URIWriteCloser) error {
-	app.uConfMu.Lock()
-	defer app.uConfMu.Unlock()
+	app.userConf.Lock()
+	defer app.userConf.Unlock()
 	// uConf must not be nil here
 
-	d, err := json.MarshalIndent(app.uConf, "", "  ")
+	d, err := json.MarshalIndent(app.userConf.V, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal config to json: %w", err)
 	}
@@ -140,25 +140,25 @@ func (app *App) resetConfig() {
 }
 
 func (app *App) applyConfig(newConf *UserConfig) map[module.Module]module.Property {
-	app.uConfMu.Lock()
-	defer app.uConfMu.Unlock()
+	app.userConf.Lock()
+	defer app.userConf.Unlock()
 	// uConf must not be nil here
-	app.uConf = newConf
+	app.userConf.V = newConf
 	// sync theme
-	app.syncThemeUnsafe(app.uConf)
+	app.syncThemeUnsafe(app.userConf.V)
 
 	app.data.Lock()
 	defer app.data.Unlock()
 
 	toEdit := make(map[module.Module]module.Property)
 	// reset modules to default state
-	for conf, m := range app.data.modules.AllFromFront() {
+	for conf, m := range app.data.V.modules.AllFromFront() {
 		property := conf.DefaultProperty()
 		if p, ok := newConf.Modules[conf.Identifier()]; ok {
 			property = p
 		}
-		app.uConf.Modules[conf.Identifier()] = property
-		// schedule updating module state because it calls handler that locks uConfMu
+		app.userConf.V.Modules[conf.Identifier()] = property
+		// schedule updating module state because it calls handler that locks userConf
 		toEdit[m] = property
 	}
 	return toEdit

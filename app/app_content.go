@@ -9,12 +9,11 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/elliotchance/orderedmap/v3"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
 )
 
-func (app *App) createContent(modules *orderedmap.OrderedMap[module.Config, module.Module]) (fyne.CanvasObject, error) {
+func (app *App) createContent(modules *modulesMap) (fyne.CanvasObject, error) {
 	f, err := app.createFooter()
 	if err != nil {
 		return nil, fmt.Errorf("create footer: %w", err)

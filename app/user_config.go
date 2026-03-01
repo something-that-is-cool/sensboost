@@ -55,14 +55,14 @@ func (app *App) saveUserConfig(a fyne.App) {
 	root := app.getRootPath(a)
 	path := filepath.Join(root, ConfigFilename)
 
-	app.uConfMu.Lock()
-	defer app.uConfMu.Unlock()
+	app.userConf.Lock()
+	defer app.userConf.Unlock()
 
-	if app.uConf == nil {
+	if app.userConf.V == nil {
 		// can happen because Close called concurrently
 		return
 	}
-	if err := app.writeConfig(app.uConf, path); err != nil {
+	if err := app.writeConfig(app.userConf.V, path); err != nil {
 		app.conf.Logger.Error("cannot save config", "err", err.Error(), "path", path)
 		return
 	}
@@ -92,6 +92,7 @@ func (app *App) onModuleToggled(id string) func(bool) {
 		app.editProperty(id, func(p *module.Property) {
 			p.Enabled = b
 		})
+		app.conf.Logger.Debug("module toggled", "module", id, "new_state", b)
 	}
 }
 
@@ -100,17 +101,18 @@ func onModuleValueChanged[T any](app *App, id string) func(T) {
 		app.editProperty(id, func(p *module.Property) {
 			p.Value = v
 		})
+		app.conf.Logger.Debug("module value changed", "module", id, "new_val", v)
 	}
 }
 
 func (app *App) editProperty(id string, fn func(*module.Property)) {
 	// this func is called when module created
 	// module is created after uConf initialized, so it must not be nil
-	app.uConfMu.Lock()
-	defer app.uConfMu.Unlock()
+	app.userConf.Lock()
+	defer app.userConf.Unlock()
 
-	p := app.uConf.Modules[id]
+	p := app.userConf.V.Modules[id]
 	fn(&p)
 	// update the property
-	app.uConf.Modules[id] = p
+	app.userConf.V.Modules[id] = p
 }

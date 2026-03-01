@@ -8,6 +8,7 @@ import (
 type ByteToggler struct {
 	Process  *Process
 	Address  uintptr
+	Offset   uintptr //optional
 	Original []byte
 	Patch    []byte
 
@@ -15,7 +16,7 @@ type ByteToggler struct {
 }
 
 func (t *ByteToggler) Set(b bool) error {
-	if !t.state.CompareAndSwap(!b, b) {
+	if t.state.Load() == b {
 		// prevent redundant calls
 		return fmt.Errorf("state is already %t", b)
 	}
@@ -23,7 +24,7 @@ func (t *ByteToggler) Set(b bool) error {
 	if b {
 		data = t.Patch
 	}
-	if err := Patch(t.Process, t.Address, data); err != nil {
+	if err := Patch(t.Process, t.Address+t.Offset, data); err != nil {
 		return err
 	}
 	t.state.Store(b)

@@ -7,19 +7,20 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/something-that-is-cool/zutil/internal/misc"
 	w "golang.org/x/sys/windows"
 )
 
 type ProcessTrackerConfig struct {
-	Handlers []func()
-	Process  *Process
+	CloseHandlers []func()
+	Process       *Process
 }
 
 func (conf ProcessTrackerConfig) New() (*ProcessTracker, error) {
 	if conf.Process == nil {
 		return nil, errors.New("nil process")
 	}
-	return &ProcessTracker{pr: conf.Process, handlers: conf.Handlers}, nil
+	return &ProcessTracker{pr: conf.Process, handlers: conf.CloseHandlers}, nil
 }
 
 type ProcessTracker struct {
@@ -30,7 +31,8 @@ type ProcessTracker struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	closed, running atomic.Bool
+	closed  atomic.Bool
+	running misc.ValueWithMutex[bool]
 }
 
 func (tr *ProcessTracker) Process() *Process {
@@ -41,7 +43,10 @@ func (tr *ProcessTracker) Close() bool {
 	if !tr.closed.CompareAndSwap(false, true) {
 		return false
 	}
-	if !tr.running.Load() {
+	tr.running.Lock()
+	defer tr.running.Unlock()
+
+	if !tr.running.V {
 		return true
 	}
 	tr.cancel()
@@ -52,21 +57,23 @@ var ErrTrackerClosed = errors.New("tracker closed")
 
 var ErrAlreadyRunning = errors.New("already running")
 
-func (tr *ProcessTracker) Run(parent context.Context) (err error) {
+func (tr *ProcessTracker) Run(parent context.Context) error {
 	if tr.closed.Load() {
 		return ErrTrackerClosed
 	}
-	if !tr.running.CompareAndSwap(false, true) {
-		return ErrAlreadyRunning
+	if tr.pr.Handle == w.InvalidHandle {
+		tr.Close()
+		return errors.New("invalid process handle")
 	}
 	select {
 	case <-parent.Done():
 		return parent.Err()
 	default:
 	}
-	if tr.pr.Handle == w.InvalidHandle {
-		tr.Close()
-		return errors.New("invalid process handle")
+	tr.running.Lock()
+	if tr.running.V {
+		tr.running.Unlock()
+		return ErrAlreadyRunning
 	}
 	tr.ctx, tr.cancel = context.WithCancel(parent)
 	defer tr.cancel()
@@ -74,11 +81,15 @@ func (tr *ProcessTracker) Run(parent context.Context) (err error) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	err = tr.loop(ticker)
+	tr.running.V = true
+	tr.running.Unlock()
+
+	err := tr.loop(ticker)
+	// call handlers when loop returned
 	for _, fn := range tr.handlers {
 		fn()
 	}
-	return
+	return err
 }
 
 func (tr *ProcessTracker) loop(ticker *time.Ticker) error {

@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"fyne.io/fyne/v2"
 	fyneapp "fyne.io/fyne/v2/app"
 	"github.com/elliotchance/orderedmap/v3"
 	"github.com/something-that-is-cool/zutil/app/module"
+	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
@@ -29,59 +31,63 @@ type App struct {
 
 	tr *win.ProcessTracker
 
-	closed, started atomic.Bool
+	closed atomic.Bool
 
-	uConf   *UserConfig
-	uConfMu sync.Mutex
+	userConf misc.ValueWithMutex[*UserConfig]
 
-	data struct {
-		sync.Mutex
-		modules *orderedmap.OrderedMap[module.Config, module.Module]
+	data misc.ValueWithMutex[struct {
+		started, init bool
 
 		win fyne.Window
 		app fyne.App
-	}
+
+		modules *modulesMap
+	}]
 }
 
-func (app *App) init(proc *win.Process) (err error) {
-	app.data.Lock()
-	defer app.data.Unlock()
-	a := app.deployFyne()
+type modulesMap = orderedmap.OrderedMap[module.Config, module.Module]
 
-	app.uConf, err = app.loadUserConfigUnsafe(a)
+func (app *App) initUnsafe(proc *win.Process) (err error) {
+	if app.data.V.init {
+		return errors.New("already initialized")
+	}
+	app.data.V.init = true // can only initialize once
+	a := app.deployFyneUnsafe()
+
+	app.userConf.V, err = app.loadUserConfigUnsafe(a)
 	if err != nil {
 		return fmt.Errorf("load user config: %w", err)
 	}
-	app.uConfMu.Lock()
-	app.syncThemeUnsafe(app.uConf)
-	app.uConfMu.Unlock()
+	app.userConf.Lock()
+	app.syncThemeUnsafe(app.userConf.V)
+	app.userConf.Unlock()
 
 	configs := app.setupModules(proc)
 	if len(configs) == 0 {
 		return errors.New("no modules created")
 	}
 	modules := app.createModulesFromConfigs(configs)
-	app.data.modules = modules
+	app.data.V.modules = modules
 
 	c, err := app.createContent(modules)
 	if err != nil {
 		return fmt.Errorf("create content: %w", err)
 	}
-	app.data.win.SetContent(c)
+	app.data.V.win.SetContent(c)
 	return nil
 }
 
 const windowWidth, windowHeight = 400, 550
 
-func (app *App) deployFyne() fyne.App {
-	app.data.app = fyneapp.NewWithID(ID)
-	app.data.win = app.data.app.NewWindow(Name)
+func (app *App) deployFyneUnsafe() fyne.App {
+	app.data.V.app = fyneapp.NewWithID(ID)
+	app.data.V.win = app.data.V.app.NewWindow(Name)
 
-	app.data.win.SetMaster()
-	app.data.win.CenterOnScreen()
-	app.data.win.Resize(fyne.NewSize(windowWidth, windowHeight))
-	app.data.win.SetFixedSize(true)
-	return app.data.app
+	app.data.V.win.SetMaster()
+	app.data.V.win.CenterOnScreen()
+	app.data.V.win.Resize(fyne.NewSize(windowWidth, windowHeight))
+	app.data.V.win.SetFixedSize(true)
+	return app.data.V.app
 }
 
 var ErrAppClosed = errors.New("app closed")
@@ -93,15 +99,10 @@ func (app *App) Run() error {
 	if app.closed.Load() {
 		return ErrAppClosed
 	}
-	if !app.started.CompareAndSwap(false, true) {
-		return ErrAlreadyRunning
+	w, err := app.doInit()
+	if err != nil {
+		return err
 	}
-	app.conf.Logger.Debug("initializing...")
-	if err := app.init(app.tr.Process()); err != nil {
-		app.started.Store(false)
-		return fmt.Errorf("init: %w", err)
-	}
-	app.conf.Logger.Debug("initialized.")
 	go func() {
 		<-app.ctx.Done()
 		if err := app.close(false, closeCauseContextClosed); err != nil && !errors.Is(err, ErrAppClosed) {
@@ -119,14 +120,32 @@ func (app *App) Run() error {
 		app.conf.Logger.Info("process tracker ended gracefully.")
 	}()
 	app.conf.Logger.Info("running window...")
-
-	app.data.Lock()
-	w := app.data.win
-	app.data.Unlock()
-	w.ShowAndRun()
-
+	app.setStarted()
+	w.ShowAndRun() // blocks
+	// ...
 	app.conf.Logger.Info("window closed.")
 	return nil
+}
+
+func (app *App) doInit() (fyne.Window, error) {
+	app.data.Lock()
+	defer app.data.Unlock()
+
+	if app.data.V.started {
+		return nil, ErrAlreadyRunning
+	}
+	app.conf.Logger.Debug("initializing...")
+	if err := app.initUnsafe(app.tr.Process()); err != nil {
+		return nil, fmt.Errorf("init: %w", err)
+	}
+	app.conf.Logger.Debug("initialized.")
+	return app.data.V.win, nil
+}
+
+func (app *App) setStarted() {
+	app.data.Lock()
+	defer app.data.Unlock()
+	app.data.V.started = true
 }
 
 // Close implements io.Closer.
@@ -142,32 +161,15 @@ func (app *App) close(main bool, cause error) error {
 	if !app.closed.CompareAndSwap(false, true) {
 		return ErrAppClosed
 	}
-	app.conf.Logger.Info("closing app...")
-	defer app.conf.Logger.Info("closed app.")
-
+	start := time.Now()
 	if cause == nil {
 		cause = closeCauseExternal
 	}
-	func() {
-		app.data.Lock()
-		defer app.data.Unlock() // release lock earlier because we don't want to lock until wg done
-
-		if app.started.Load() {
-			// save the user config
-			app.saveUserConfig(app.data.app)
-			// if closed because parent process closed, we don't need to disable
-			// all modules as it will not affect
-			if !errors.Is(cause, closeCauseTrackerClosed) {
-				// disable all modules before canceling context
-				// if we will not do this any logic that takes our context can end
-				// earlier so it won't disable modules properly
-				app.disableModulesUnsafe()
-			}
-		}
-		// after we disabled all modules we can close the context safely
-		app.cancel()
-		app.tr.Close()
+	app.conf.Logger.Info("closing app...")
+	defer func() {
+		app.conf.Logger.Info("closed app.", "elapsed", time.Since(start).String())
 	}()
+	app.closeIfStarted(cause)
 	// wait for additional things to end
 	app.conf.Logger.Debug("waiting for waitgroup end...")
 	app.wg.Wait()
@@ -183,11 +185,32 @@ func (app *App) close(main bool, cause error) error {
 	return nil
 }
 
+func (app *App) closeIfStarted(cause error) {
+	app.data.Lock()
+	defer app.data.Unlock() // release lock earlier because we don't want to lock until wg done
+
+	if app.data.V.started {
+		// save the user config
+		app.saveUserConfig(app.data.V.app)
+		// if closed because parent process closed, we don't need to disable
+		// all modules as it will not affect
+		if !errors.Is(cause, closeCauseTrackerClosed) {
+			// disable all modules before canceling context
+			// if we will not do this any logic that takes our context can end
+			// earlier so it won't disable modules properly
+			app.disableModulesUnsafe()
+		}
+	}
+	// after we disabled all modules we can close the context safely
+	app.cancel()
+	app.tr.Close()
+}
+
 func (app *App) disableModulesUnsafe() {
 	app.conf.Logger.Debug("disabling modules...")
 	defer app.conf.Logger.Debug("disabled modules.")
 
-	for _, m := range app.data.modules.AllFromFront() {
+	for _, m := range app.data.V.modules.AllFromFront() {
 		m.Disable()
 		app.conf.Logger.Debug("disabled module.", "module", m.Name())
 	}
@@ -197,8 +220,8 @@ func (app *App) closeWin() {
 	app.data.Lock()
 	defer app.data.Unlock()
 
-	if app.data.win != nil {
-		app.data.win.Close()
+	if w := app.data.V.win; w != nil {
+		w.Close()
 		app.conf.Logger.Debug("closed window.")
 		return
 	}

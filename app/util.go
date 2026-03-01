@@ -12,7 +12,8 @@ func (app *App) syncThemeUnsafe(conf *UserConfig) {
 	if conf.LightTheme {
 		variant = theme.VariantLight
 	}
-	app.data.app.Settings().SetTheme(fyneutil.NewVariantTheme(theme.DefaultTheme(), variant))
+	settings := app.data.V.app.Settings()
+	settings.SetTheme(fyneutil.NewVariantTheme(theme.DefaultTheme(), variant))
 }
 
 func (app *App) showInfo(title, msg string, safe bool) {
@@ -20,10 +21,11 @@ func (app *App) showInfo(title, msg string, safe bool) {
 		app.data.Lock()
 		defer app.data.Unlock()
 	}
-	if app.data.win == nil {
+	w := app.data.V.win
+	if w == nil {
 		return
 	}
-	dialog.ShowInformation(title, msg, app.data.win)
+	dialog.ShowInformation(title, msg, w)
 }
 
 func (app *App) doModuleUpdates(updates map[module.Module]module.Property) {
