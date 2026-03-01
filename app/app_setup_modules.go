@@ -13,6 +13,7 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 		app.createNoHurtCamModule(proc),
 		app.createAutoSprintModule(proc),
 		app.createNoParticleModule(proc),
+		app.createNoFireModule(proc),
 	}
 }
 
@@ -56,6 +57,15 @@ func (app *App) createNoParticleModule(proc *win.Process) module.Config {
 	conf := &modules.NoParticle{
 		Process: proc,
 		Error:   app.onError("no_particle"),
+	}
+	conf.OnToggle = app.onModuleToggled(conf.Identifier())
+	return conf
+}
+
+func (app *App) createNoFireModule(proc *win.Process) module.Config {
+	conf := &modules.NoFire{
+		Process: proc,
+		Error:   app.onError("no_fire"),
 	}
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf

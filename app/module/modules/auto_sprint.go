@@ -14,6 +14,7 @@ var (
 )
 
 type AutoSprint struct {
+	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
 	OnToggle func(bool)
@@ -30,11 +31,6 @@ func (conf *AutoSprint) Create(p module.Property) module.Module {
 	// sync the state
 	_ = m.Set(p.Enabled)
 	return m
-}
-
-// DefaultProperty ...
-func (*AutoSprint) DefaultProperty() module.Property {
-	return module.Property{Enabled: false}
 }
 
 // Identifier ...

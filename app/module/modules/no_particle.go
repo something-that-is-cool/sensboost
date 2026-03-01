@@ -9,6 +9,7 @@ import (
 var particleSig = []byte{0xE8, 0x68, 0x4F, 0xCF, 0xFF}
 
 type NoParticle struct {
+	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
 	OnToggle func(bool)
@@ -24,11 +25,6 @@ func (conf *NoParticle) Create(p module.Property) module.Module {
 	// sync state
 	_ = n.Set(p.Enabled)
 	return n
-}
-
-// DefaultProperty ...
-func (*NoParticle) DefaultProperty() module.Property {
-	return module.Property{Enabled: false}
 }
 
 // Identifier ...

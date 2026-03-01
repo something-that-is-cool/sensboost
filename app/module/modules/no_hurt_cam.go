@@ -11,6 +11,7 @@ var _ module.Module = (*noHurtCam)(nil)
 var noHurtCamSig = []byte{0x66, 0x44, 0x0F, 0x6E, 0x83, 0x6C, 0x0E, 0x00, 0x00}
 
 type NoHurtCam struct {
+	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
 	OnToggle func(bool)
@@ -26,11 +27,6 @@ func (conf *NoHurtCam) Create(p module.Property) module.Module {
 	// sync state
 	_ = n.Set(p.Enabled)
 	return n
-}
-
-// DefaultProperty ...
-func (conf *NoHurtCam) DefaultProperty() module.Property {
-	return module.Property{Enabled: false}
 }
 
 // Identifier ...

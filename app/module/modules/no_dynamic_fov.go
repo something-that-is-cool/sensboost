@@ -11,6 +11,7 @@ var _ module.Module = (*noDynamicFov)(nil)
 var noDynamicFovSig = []byte{0xF3, 0x0F, 0x11, 0x83, 0x78, 0x12, 0x00, 0x00}
 
 type NoDynamicFov struct {
+	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
 	OnToggle func(bool)
@@ -26,11 +27,6 @@ func (conf *NoDynamicFov) Create(p module.Property) module.Module {
 	// sync state
 	_ = n.Set(p.Enabled)
 	return n
-}
-
-// DefaultProperty ...
-func (*NoDynamicFov) DefaultProperty() module.Property {
-	return module.Property{Enabled: false}
 }
 
 // Identifier ...

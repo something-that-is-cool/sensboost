@@ -1,6 +1,9 @@
 package modulesutil
 
-import "fyne.io/fyne/v2/widget"
+import (
+	"fyne.io/fyne/v2/widget"
+	"github.com/something-that-is-cool/zutil/app/module"
+)
 
 const (
 	ToggleEnabled  = "enabled"
@@ -22,4 +25,10 @@ func CheckSet(onError func(error), check *widget.Check, act func(bool, *widget.C
 		}
 		check.Refresh()
 	}
+}
+
+type DefaultDisabled struct{}
+
+func (DefaultDisabled) DefaultProperty() module.Property {
+	return module.Property{Enabled: false}
 }
