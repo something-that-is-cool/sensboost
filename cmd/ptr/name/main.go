@@ -26,7 +26,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("resolve pointer value: %w", err))
 	}
-	fmt.Printf("resolved float pointer value: %q\n", toStr(v))
+	fmt.Printf("resolved pointer value: %q\n", toStr(v))
 	fmt.Printf("address: 0x%x\n", finalAddr)
 }
 
