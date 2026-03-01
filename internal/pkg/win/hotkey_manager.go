@@ -3,7 +3,6 @@ package win
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"sync"
 	"sync/atomic"
 
@@ -20,9 +19,9 @@ func (conf HotkeyManagerConfig) New() *HotkeyManager {
 	if conf.Handlers == nil {
 		conf.Handlers = make(map[string]func())
 	}
-	m := &HotkeyManager{events: make(map[string]func())}
+	m := &HotkeyManager{Events: Events{V: make(map[string]func())}}
 	for k, h := range conf.Handlers {
-		m.events[k] = h
+		m.Events.V[k] = h
 	}
 	return m
 }
@@ -31,13 +30,15 @@ type HotkeyManager struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	l *slog.Logger
-
 	closed  atomic.Bool
 	running misc.ValueWithMutex[bool]
 
-	events   map[string]func()
-	eventsMu sync.RWMutex
+	Events Events
+}
+
+type Events struct {
+	sync.RWMutex
+	V map[string]func()
 }
 
 // Run ...
@@ -77,21 +78,36 @@ func (m *HotkeyManager) Handle(key string, fn func()) {
 	if key == "" || fn == nil {
 		return
 	}
-	m.eventsMu.Lock()
-	defer m.eventsMu.Unlock()
-	m.events[key] = fn
+	m.Events.Lock()
+	defer m.Events.Unlock()
+	m.HandleUnsafe(key, fn)
+}
+
+func (m *HotkeyManager) HandleUnsafe(key string, fn func()) {
+	m.Events.V[key] = fn
 }
 
 func (m *HotkeyManager) DeleteHandler(key string) {
-	m.eventsMu.Lock()
-	defer m.eventsMu.Unlock()
-	delete(m.events, key)
+	if key == "" {
+		return
+	}
+	m.Events.Lock()
+	defer m.Events.Unlock()
+	m.DeleteHandlerUnsafe(key)
+}
+
+func (m *HotkeyManager) DeleteHandlerUnsafe(key string) {
+	delete(m.Events.V, key)
 }
 
 func (m *HotkeyManager) ClearHandlers() {
-	m.eventsMu.Lock()
-	defer m.eventsMu.Unlock()
-	clear(m.events) // todo: unsafe methods + allow user to control mutex
+	m.Events.Lock()
+	defer m.Events.Unlock()
+	m.ClearHandlersUnsafe()
+}
+
+func (m *HotkeyManager) ClearHandlersUnsafe() {
+	clear(m.Events.V)
 }
 
 var ErrAlreadyClosed = errors.New("already closed")
@@ -115,10 +131,10 @@ func (m *HotkeyManager) handleEvent(ev hook.Event) {
 	if !ok {
 		return
 	}
-	m.eventsMu.RLock()
-	defer m.eventsMu.RUnlock()
+	m.Events.RLock()
+	defer m.Events.RUnlock()
 
-	h, ok := m.events[s]
+	h, ok := m.Events.V[s]
 	if !ok {
 		// event is not handled
 		return
