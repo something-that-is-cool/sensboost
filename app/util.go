@@ -6,7 +6,6 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"github.com/something-that-is-cool/zutil/app/module"
-	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
 	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
@@ -45,21 +44,6 @@ func (app *App) moduleByIDUnsafe(id string) (module.Module, bool) {
 		}
 	}
 	return nil, false
-}
-
-func (app *App) loadBinds(conf *UserConfig) map[string]func() {
-	x := make(map[string]func())
-	for id, key := range conf.Binds {
-		m, ok := app.moduleByIDUnsafe(id)
-		if !ok {
-			continue
-		}
-		if _, ok = m.(modulesutil.ToggleableModule); !ok {
-			continue
-		}
-		x[key] = app.bindToggleModule(id, m)
-	}
-	return x
 }
 
 func (app *App) doClose(name string, fn func() error) {

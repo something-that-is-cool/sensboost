@@ -13,9 +13,7 @@ import (
 
 func (app *App) createModuleSettingsObject(m module.Module, c module.Config, w fyne.Window) fyne.CanvasObject {
 	if _, ok := m.(modulesutil.ToggleableModule); !ok {
-		return fyneutil.NewClickableIcon(theme.InfoIcon(), func() {
-			app.showInfo("Description", m.Description(), true)
-		})
+		return app.createDescriptionButton(m)
 	}
 	return fyneutil.NewClickableIcon(theme.SettingsIcon(), func() {
 		dialog.ShowCustom("Settings", "Close", container.NewVBox(
@@ -24,5 +22,11 @@ func (app *App) createModuleSettingsObject(m module.Module, c module.Config, w f
 			}),
 			widget.NewButton("Bind", app.bindButton(w, m, c)),
 		), w)
+	})
+}
+
+func (app *App) createDescriptionButton(m module.Module) fyne.CanvasObject {
+	return fyneutil.NewClickableIcon(theme.InfoIcon(), func() {
+		app.showInfo("Description", m.Description(), true)
 	})
 }

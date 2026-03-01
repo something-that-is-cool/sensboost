@@ -93,3 +93,18 @@ func (app *App) bindToggleModule(id string, m module.Module) func() {
 		})
 	}
 }
+
+func (app *App) loadBinds(conf *UserConfig) map[string]func() {
+	x := make(map[string]func())
+	for id, key := range conf.Binds {
+		m, ok := app.moduleByIDUnsafe(id)
+		if !ok {
+			continue
+		}
+		if _, ok = m.(modulesutil.ToggleableModule); !ok {
+			continue
+		}
+		x[key] = app.bindToggleModule(id, m)
+	}
+	return x
+}
