@@ -67,6 +67,7 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 	modules := app.createModulesFromConfigs(configs)
 	app.data.V.modules = modules
 
+	// create hotkey manager after modules initialized !!!!!
 	app.userConf.Lock()
 	app.hm = win.HotkeyManagerConfig{Handlers: app.loadBinds(app.userConf.V)}.New()
 	app.userConf.Unlock()
