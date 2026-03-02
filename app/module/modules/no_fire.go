@@ -27,12 +27,13 @@ type NoFire struct {
 
 // Create ...
 func (conf *NoFire) Create(p module.Property) (module.Module, error) {
+	t := &onFireFlagToggler{proc: conf.Process, err: conf.Error}
 	c := &modulesutil.ByteToggleModule{
 		Sig:     noFireSig,
 		Process: conf.Process,
 		Error:   conf.Error,
 		OnToggle: func(b bool) {
-			onNoFireToggle(b, conf.Process, conf.Error)
+			t.toggle(b)
 			conf.OnToggle(b)
 		},
 	}
@@ -74,23 +75,41 @@ var (
 	onFireOffsets         = []uintptr{0x18, 0x60, 0xF0, 0x0, 0x10}
 )
 
-func onNoFireToggle(b bool, proc *win.Process, error func(error)) {
+type onFireFlagToggler struct {
+	proc *win.Process
+	err  func(error)
+
+	addr uintptr
+}
+
+func (t *onFireFlagToggler) toggle(b bool) {
 	if !b {
 		return
 	}
-	mod, _, err := proc.GetModuleInfo()
-	if err != nil {
-		error(fmt.Errorf("get process module info: %w", err))
+	addr, ok := t.lazyAddress()
+	if !ok {
 		return
 	}
-	// force write false to onFire flag
-	addr, err := win.ResolvePointerAddress(proc, mod, onFirePtrBase, onFireOffsets)
+	err := win.WriteMemory[byte](t.proc, addr, 0)
 	if err != nil {
-		error(fmt.Errorf("resolve onFire flag pointer address: %w", err))
-		return
+		t.err(fmt.Errorf("write onFire flag 0: %w", err))
 	}
-	err = win.WriteMemory[byte](proc, addr, 0)
+}
+
+func (t *onFireFlagToggler) lazyAddress() (uintptr, bool) {
+	if t.addr != 0 {
+		return t.addr, true
+	}
+	mod, _, err := t.proc.GetModuleInfo()
 	if err != nil {
-		error(fmt.Errorf("write onFire flag 0: %w", err))
+		t.err(fmt.Errorf("get process module info: %w", err))
+		return 0, false
 	}
+	addr, err := win.ResolvePointerAddress(t.proc, mod, onFirePtrBase, onFireOffsets)
+	if err != nil {
+		t.err(fmt.Errorf("resolve onFire flag pointer address: %w", err))
+		return 0, false
+	}
+	t.addr = addr
+	return addr, true
 }
