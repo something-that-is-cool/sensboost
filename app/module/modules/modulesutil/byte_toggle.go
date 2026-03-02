@@ -1,6 +1,7 @@
 package modulesutil
 
 import (
+	"bytes"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -83,12 +84,8 @@ func (m *byteToggleModule) lazyToggler() (*win.ByteToggler, error) {
 	}
 	addr, err := win.ScanSignature(m.proc, m.proc.ModuleSize, m.proc.Module, m.sig.Signature)
 	if err != nil {
-		addr, err = win.ScanSignature(m.proc, m.proc.ModuleSize, m.proc.Module, m.sig.Patch)
-		if err != nil {
-			return nil, fmt.Errorf("signature not found: %w", err)
-		}
+		return nil, fmt.Errorf("signature not found: %w", err)
 	}
-	addr += m.sig.Offset
 	if m.sig.Original == nil {
 		m.sig.Original = m.sig.Signature
 	}
@@ -103,6 +100,10 @@ func (m *byteToggleModule) lazyToggler() (*win.ByteToggler, error) {
 	}
 	testAddr, _ := win.ScanSignature(m.proc, uintptr(len(m.sig.Patch)), addr, m.sig.Patch)
 	if testAddr != 0 {
+		t.SetState(true)
+	}
+	currentBytes, err := win.ReadBytes(m.proc, addr, uint(len(m.sig.Patch)))
+	if err == nil && bytes.Equal(currentBytes, m.sig.Patch) {
 		t.SetState(true)
 	}
 	m.t = t

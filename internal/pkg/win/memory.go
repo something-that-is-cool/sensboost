@@ -29,6 +29,22 @@ func ReadMemory[T any](p *Process, addr uintptr) (val T, err error) {
 	return val, err
 }
 
+func ReadBytes(p *Process, addr uintptr, size uint) ([]byte, error) {
+	if size == 0 {
+		return nil, errors.New("zero size")
+	}
+	buf := make([]byte, size)
+
+	var bytesRead uintptr
+	if err := w.ReadProcessMemory(p.Handle, addr, &buf[0], uintptr(size), &bytesRead); err != nil {
+		return nil, err
+	}
+	if bytesRead != uintptr(size) {
+		return nil, fmt.Errorf("read %d bytes, expected %d", bytesRead, size)
+	}
+	return buf, nil
+}
+
 func ResolvePointerValue[T any](proc *Process, mod, baseAddr uintptr, offsets []uintptr) (T, uintptr, error) {
 	var zero T
 	finalAddr, err := ResolvePointerAddress(proc, mod, baseAddr, offsets)
