@@ -11,7 +11,7 @@ type Module interface {
 }
 
 type Config interface {
-	Create(Property) Module
+	Create(Property) (Module, error)
 	DefaultProperty() Property
 	Identifier() string // identify in config
 }

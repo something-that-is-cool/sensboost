@@ -1,12 +1,16 @@
 package modules
 
 import (
+	"fmt"
+
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
-var particleSig = []byte{0xE8, 0x68, 0x4F, 0xCF, 0xFF}
+var noParticleSig = modulesutil.SignatureSettings{
+	Signature: []byte{0xE8, 0x68, 0x4F, 0xCF, 0xFF},
+}
 
 type NoParticle struct {
 	modulesutil.DefaultDisabled
@@ -15,16 +19,20 @@ type NoParticle struct {
 	OnToggle func(bool)
 }
 
-func (conf *NoParticle) Create(p module.Property) module.Module {
-	n := &noParticle{ToggleableModule: (&modulesutil.SigToggleModule{
-		Signature: particleSig,
-		Process:   conf.Process,
-		Error:     conf.Error,
-		OnToggle:  conf.OnToggle,
-	}).New()}
-	// sync state
-	_ = n.Set(p.Enabled)
-	return n
+func (conf *NoParticle) Create(p module.Property) (module.Module, error) {
+	c := &modulesutil.SigToggleModule{
+		Sig:      noParticleSig,
+		Process:  conf.Process,
+		Error:    conf.Error,
+		OnToggle: conf.OnToggle,
+	}
+	s, err := c.New()
+	if err != nil {
+		return nil, fmt.Errorf("create sig toggle module: %w", err)
+	}
+	n := &noParticle{ToggleableModule: s}
+	_ = n.UpdateState(p.Enabled)
+	return n, nil
 }
 
 // Identifier ...
@@ -48,5 +56,5 @@ func (*noParticle) Description() string {
 
 // Edit ...
 func (n *noParticle) Edit(p module.Property) {
-	_ = n.Set(p.Enabled) //fixme handle error
+	_ = n.UpdateState(p.Enabled) //fixme handle error
 }

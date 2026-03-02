@@ -2,11 +2,11 @@ package modulesutil
 
 import (
 	"fmt"
-	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
@@ -19,24 +19,22 @@ type FloatPointerModule struct { // so float64 would be DoublePointerModule
 	SliderToMemory    func(float64) float32
 	MemoryToSlider    func(float32) float64
 
-	BaseAddress uintptr
-	Offsets     []uintptr
+	Ptr PointerSettings
 
 	OnValueChanged func(float64)
 }
 
 // New ...
-func (conf FloatPointerModule) New() ModuleWithValue[float64] {
+func (conf FloatPointerModule) New() (ModuleWithValue[float64], error) {
 	f := &floatPointerModule{
-		err:      conf.Error,
-		proc:     conf.Process,
-		sToM:     conf.SliderToMemory,
-		mToS:     conf.MemoryToSlider,
-		min:      conf.Min,
-		max:      conf.Max,
-		def:      conf.Default,
-		baseAddr: conf.BaseAddress,
-		offsets:  conf.Offsets,
+		err:  conf.Error,
+		proc: conf.Process,
+		sToM: conf.SliderToMemory,
+		mToS: conf.MemoryToSlider,
+		min:  conf.Min,
+		max:  conf.Max,
+		def:  conf.Default,
+		ptr:  conf.Ptr,
 	}
 	v, err := f.initialRead()
 	if err != nil {
@@ -55,7 +53,7 @@ func (conf FloatPointerModule) New() ModuleWithValue[float64] {
 		},
 	}
 	f.slider, f.input = c.Create()
-	return f
+	return f, nil
 }
 
 var _ ModuleWithValue[float64] = (*floatPointerModule)(nil)
@@ -69,18 +67,15 @@ type floatPointerModule struct {
 
 	min, max, def float64
 
-	baseAddr uintptr
-	offsets  []uintptr
+	ptr PointerSettings
 
 	slider *widget.Slider
 	input  *widget.Entry
 
-	val struct { // value tracker to prevent updating to same value
-		sync.RWMutex
+	val misc.ValueWithRWMutex[struct {
 		v        float64
 		notFirst bool
-	}
-
+	}]
 	a uintptr
 }
 
@@ -89,30 +84,33 @@ func (m *floatPointerModule) CreateObjects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{m.slider, m.input}
 }
 
-func (m *floatPointerModule) Set(v float64) error {
+// SetValue ...
+func (m *floatPointerModule) SetValue(v float64) error {
 	m.slider.SetValue(v)
 	return nil
 }
 
-func (m *floatPointerModule) Disable() {
-	m.forceWrite(m.def) // already normalizes !!!
-}
-
+// Value ...
 func (m *floatPointerModule) Value() (float64, bool) {
 	m.val.RLock()
 	defer m.val.RUnlock()
 
-	if !m.val.notFirst {
+	if !m.val.V.notFirst {
 		return 0, false
 	}
-	return m.val.v, true
+	return m.val.V.v, true
+}
+
+// Disable ...
+func (m *floatPointerModule) Disable() {
+	m.forceWrite(m.def) // already normalizes !!!
 }
 
 func (m *floatPointerModule) write(val float64) error {
 	m.val.Lock()
 	defer m.val.Unlock()
 
-	if m.val.notFirst && mgl64.FloatEqual(m.val.v, val) {
+	if m.val.V.notFirst && mgl64.FloatEqual(m.val.V.v, val) {
 		// new value is same as current
 		return fmt.Errorf("new value is same as current (%g)", val)
 	}
@@ -124,8 +122,8 @@ func (m *floatPointerModule) write(val float64) error {
 	if err = win.WriteMemory[float32](m.proc, addr, toWrite); err != nil {
 		return fmt.Errorf("write memory: %w", err)
 	}
-	m.val.v = val
-	m.val.notFirst = true
+	m.val.V.v = val
+	m.val.V.notFirst = true
 	return nil
 }
 
@@ -155,7 +153,7 @@ func (m *floatPointerModule) resolveAddress() (uintptr, error) {
 	if m.a != 0 {
 		return m.a, nil
 	}
-	addr, err := win.ResolvePointerAddress(m.proc, m.proc.Module, m.baseAddr, m.offsets)
+	addr, err := win.ResolvePointerAddress(m.proc, m.proc.Module, m.ptr.BaseAddress, m.ptr.Offsets)
 	if err != nil {
 		return 0, err
 	}

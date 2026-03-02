@@ -2,6 +2,7 @@ package modules
 
 import (
 	_ "embed"
+	"fmt"
 	"math"
 
 	"github.com/something-that-is-cool/zutil/app/module"
@@ -9,10 +10,10 @@ import (
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
-var (
-	baseAddress = uintptr(0x019209F0)
-	offsets     = []uintptr{0x10, 0x8, 0x8, 0x8, 0x28, 0xB0, 0x68, 0x14}
-)
+var controllerSensitivityPtr = modulesutil.PointerSettings{
+	BaseAddress: 0x019209F0,
+	Offsets:     []uintptr{0x10, 0x8, 0x8, 0x8, 0x28, 0xB0, 0x68, 0x14},
+}
 
 var _ module.Module = (*controllerSensitivity)(nil)
 
@@ -22,8 +23,8 @@ type ControllerSensitivity struct {
 	OnValueChanged func(float64)
 }
 
-func (conf *ControllerSensitivity) Create(p module.Property) module.Module {
-	c := &controllerSensitivity{ModuleWithValue: (&modulesutil.FloatPointerModule{
+func (conf *ControllerSensitivity) Create(p module.Property) (module.Module, error) {
+	fc := &modulesutil.FloatPointerModule{
 		Process:        conf.Process,
 		Error:          conf.Error,
 		OnValueChanged: conf.OnValueChanged,
@@ -36,14 +37,17 @@ func (conf *ControllerSensitivity) Create(p module.Property) module.Module {
 		MemoryToSlider: func(f float32) float64 {
 			return math.Ceil(float64(f) * 100)
 		},
-		BaseAddress: baseAddress,
-		Offsets:     offsets,
-	}).New()}
-	// sync the state
-	if v, ok := p.Value.(float64); ok {
-		_ = c.Set(v)
+		Ptr: controllerSensitivityPtr,
 	}
-	return c
+	f, err := fc.New()
+	if err != nil {
+		return nil, fmt.Errorf("create float ptr module: %w", err)
+	}
+	c := &controllerSensitivity{ModuleWithValue: f}
+	if v, ok := p.Value.(float64); ok {
+		_ = c.SetValue(v)
+	}
+	return c, nil
 }
 
 // DefaultProperty ...
@@ -79,5 +83,5 @@ func (c *controllerSensitivity) Edit(p module.Property) {
 	if !ok {
 		return
 	}
-	_ = c.Set(v)
+	_ = c.SetValue(v)
 }

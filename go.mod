@@ -10,6 +10,7 @@ require (
 	github.com/go-vgo/robotgo v1.0.0
 	github.com/robotn/gohook v0.42.3
 	github.com/samber/lo v1.52.0
+	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.41.0
 )
 

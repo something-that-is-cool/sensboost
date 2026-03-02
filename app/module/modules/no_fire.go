@@ -8,10 +8,10 @@ import (
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
-var (
-	noFireSig   = []byte{0x48, 0x89, 0x42, 0x10, 0x48, 0x83, 0xC1, 0x18}
-	noFirePatch = []byte{0x90, 0x90, 0x90, 0x90, 0x48, 0x83, 0xC1, 0x18} // keep add rcx,18
-)
+var noFireSig = modulesutil.SignatureSettings{
+	Signature: []byte{0x48, 0x89, 0x42, 0x10, 0x48, 0x83, 0xC1, 0x18},
+	Patch:     []byte{0x90, 0x90, 0x90, 0x90, 0x48, 0x83, 0xC1, 0x18}, // keep add rcx,18
+}
 
 // mov [rdx+10],rax <--
 // add rcx,18
@@ -26,20 +26,23 @@ type NoFire struct {
 }
 
 // Create ...
-func (conf *NoFire) Create(p module.Property) module.Module {
-	m := &noFire{ToggleableModule: (&modulesutil.ByteToggleModule{
-		Signature: noFireSig,
-		Patch:     noFirePatch,
-		Process:   conf.Process,
-		Error:     conf.Error,
+func (conf *NoFire) Create(p module.Property) (module.Module, error) {
+	c := &modulesutil.ByteToggleModule{
+		Sig:     noFireSig,
+		Process: conf.Process,
+		Error:   conf.Error,
 		OnToggle: func(b bool) {
 			onNoFireToggle(b, conf.Process, conf.Error)
 			conf.OnToggle(b)
 		},
-	}).New()}
-	// sync the state
-	_ = m.Set(p.Enabled)
-	return m
+	}
+	b, err := c.New()
+	if err != nil {
+		return nil, fmt.Errorf("create byte toggler module: %w", err)
+	}
+	m := &noFire{ToggleableModule: b}
+	_ = m.UpdateState(p.Enabled)
+	return m, nil
 }
 
 // Identifier ...
@@ -63,7 +66,7 @@ func (n *noFire) Description() string {
 
 // Edit ...
 func (n *noFire) Edit(property module.Property) {
-	_ = n.Set(property.Enabled)
+	_ = n.UpdateState(property.Enabled)
 }
 
 var (

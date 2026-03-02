@@ -1,17 +1,19 @@
 package modules
 
 import (
+	"fmt"
+
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
-var _ module.Module = (*autoSprint)(nil)
+var autoSprintSig = modulesutil.SignatureSettings{
+	Signature: []byte{0x0F, 0xB6, 0x41, 0x63, 0x40, 0x32, 0xED},
+	Patch:     []byte{0x66, 0xB8, 0x01, 0x00, 0x40, 0x30, 0xED},
+}
 
-var (
-	autoSprintSig   = []byte{0x0F, 0xB6, 0x41, 0x63, 0x40, 0x32, 0xED}
-	autoSprintPatch = []byte{0x66, 0xB8, 0x01, 0x00, 0x40, 0x30, 0xED}
-)
+var _ module.Module = (*autoSprint)(nil)
 
 type AutoSprint struct {
 	modulesutil.DefaultDisabled
@@ -20,17 +22,20 @@ type AutoSprint struct {
 	OnToggle func(bool)
 }
 
-func (conf *AutoSprint) Create(p module.Property) module.Module {
-	m := &autoSprint{ToggleableModule: (&modulesutil.ByteToggleModule{
-		Signature: autoSprintSig,
-		Patch:     autoSprintPatch,
-		Process:   conf.Process,
-		Error:     conf.Error,
-		OnToggle:  conf.OnToggle,
-	}).New()}
-	// sync the state
-	_ = m.Set(p.Enabled)
-	return m
+func (conf *AutoSprint) Create(p module.Property) (module.Module, error) {
+	c := &modulesutil.ByteToggleModule{
+		Sig:      autoSprintSig,
+		Process:  conf.Process,
+		Error:    conf.Error,
+		OnToggle: conf.OnToggle,
+	}
+	b, err := c.New()
+	if err != nil {
+		return nil, fmt.Errorf("create byte toggle module: %w", err)
+	}
+	m := &autoSprint{ToggleableModule: b}
+	_ = m.UpdateState(p.Enabled)
+	return m, nil
 }
 
 // Identifier ...
@@ -54,5 +59,5 @@ func (*autoSprint) Description() string {
 
 // Edit ...
 func (a *autoSprint) Edit(p module.Property) {
-	_ = a.Set(p.Enabled)
+	_ = a.UpdateState(p.Enabled)
 }

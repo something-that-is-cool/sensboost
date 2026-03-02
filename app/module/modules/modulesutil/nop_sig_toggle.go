@@ -9,21 +9,18 @@ import (
 )
 
 type SigToggleModule struct {
-	Signature []byte
-	NopSig    []byte
-	Offset    uintptr
-	Process   *win.Process
-	Error     func(error)
-	OnToggle  func(bool)
+	Sig      SignatureSettings
+	Offset   uintptr
+	Process  *win.Process
+	Error    func(error)
+	OnToggle func(bool)
 }
 
-func (conf SigToggleModule) New() ToggleableModule {
+func (conf SigToggleModule) New() (ToggleableModule, error) {
 	s := &sigToggleModule{
-		sig:    conf.Signature,
-		nop:    conf.NopSig,
-		offset: conf.Offset,
-		proc:   conf.Process,
-		err:    conf.Error,
+		sig:  conf.Sig,
+		proc: conf.Process,
+		err:  conf.Error,
 	}
 	s.check = &widget.Check{Text: ToggleDisabled}
 	s.check.OnChanged = CheckSet(conf.Error, s.check, func(b bool, check *widget.Check) error {
@@ -37,16 +34,16 @@ func (conf SigToggleModule) New() ToggleableModule {
 		conf.OnToggle(b)
 		return nil
 	})
-	return s
+	return s, nil
 }
 
 var _ ToggleableModule = (*sigToggleModule)(nil)
 
 type sigToggleModule struct {
-	sig, nop []byte
-	offset   uintptr
-	proc     *win.Process
-	err      func(error)
+	sig SignatureSettings
+
+	proc *win.Process
+	err  func(error)
 
 	check *widget.Check
 
@@ -58,13 +55,15 @@ func (m *sigToggleModule) CreateObjects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{m.check}
 }
 
-func (m *sigToggleModule) Set(b bool) error {
+// UpdateState ...
+func (m *sigToggleModule) UpdateState(b bool) error {
 	m.check.SetChecked(b)
 	return nil
 }
 
-func (m *sigToggleModule) Value() (bool, bool) {
-	return m.t.Enabled(), true
+// State ...
+func (m *sigToggleModule) State() bool {
+	return m.t.Enabled()
 }
 
 func (m *sigToggleModule) lazyToggler() (*win.SignatureNopToggler, error) {
@@ -75,8 +74,8 @@ func (m *sigToggleModule) lazyToggler() (*win.SignatureNopToggler, error) {
 		Process:   m.proc,
 		Module:    m.proc.Module,
 		Size:      m.proc.ModuleSize,
-		Signature: m.sig,
-		NopSig:    m.nop,
+		Signature: m.sig.Signature,
+		NopSig:    m.lazyPatch(),
 	}
 	t, err := conf.New()
 	if err != nil {
@@ -95,4 +94,12 @@ func (m *sigToggleModule) Disable() {
 	if err != nil {
 		m.err(fmt.Errorf("disable (set false): %w", err))
 	}
+}
+
+func (m *sigToggleModule) lazyPatch() []byte {
+	if m.sig.Patch != nil {
+		return m.sig.Patch
+	}
+	m.sig.Patch = win.NopSig(len(m.sig.Signature))
+	return m.sig.Patch
 }

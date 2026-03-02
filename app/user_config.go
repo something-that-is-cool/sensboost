@@ -13,6 +13,7 @@ import (
 type UserConfig struct {
 	Modules    map[string]module.Property `json:"modules"`
 	Binds      map[string]string          `json:"binds"` // module_id => char
+	CharBinds  map[string]string          `json:"-"`     // char => module_id
 	LightTheme bool                       `json:"light_theme"`
 }
 
@@ -20,6 +21,7 @@ func DefaultUserConfig() *UserConfig {
 	return &UserConfig{
 		Modules:    make(map[string]module.Property),
 		Binds:      make(map[string]string),
+		CharBinds:  make(map[string]string),
 		LightTheme: false,
 	}
 }
@@ -59,6 +61,9 @@ func fillDefaults(c *UserConfig) {
 	if c.Binds == nil {
 		c.Binds = make(map[string]string)
 	}
+	if c.CharBinds == nil {
+		c.CharBinds = make(map[string]string)
+	}
 }
 
 // ref: github.com/gameparrot/netherconnect
@@ -90,7 +95,7 @@ const filePerm = 0777
 
 func (app *App) writeConfig(conf *UserConfig, path string) (err error) {
 	var d []byte
-	if d, err = json.Marshal(conf); err != nil {
+	if d, err = json.MarshalIndent(conf, "", "  "); err != nil {
 		return fmt.Errorf("marshal default config: %w", err)
 	}
 	if err = os.WriteFile(path, d, filePerm); err != nil {

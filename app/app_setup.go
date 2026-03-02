@@ -3,11 +3,12 @@ package app
 import (
 	"github.com/elliotchance/orderedmap/v3"
 	"github.com/something-that-is-cool/zutil/app/module"
+	"go.uber.org/multierr"
 )
 
 type modulesMap = orderedmap.OrderedMap[module.Config, module.Module]
 
-func (app *App) createModulesFromConfigs(configs []module.Config) *modulesMap {
+func (app *App) createModulesFromConfigs(configs []module.Config) (*modulesMap, bool, error) {
 	type toCreateModule struct {
 		Config   module.Config
 		Property module.Property
@@ -25,10 +26,20 @@ func (app *App) createModulesFromConfigs(configs []module.Config) *modulesMap {
 		}
 	}()
 	// creating all modules within of the uConfMu !!!
+	var (
+		ok       bool
+		multiErr error
+	)
 	for _, m := range toCreate {
-		modules.Set(m.Config, m.Config.Create(m.Property))
+		mod, err := m.Config.Create(m.Property)
+		if err != nil {
+			multiErr = multierr.Append(multiErr, err)
+			continue
+		}
+		ok = true // at least one module created
+		modules.Set(m.Config, mod)
 	}
-	return modules
+	return modules, ok, multiErr
 }
 
 func (app *App) mustExtractPropertyUnsafe(conf module.Config) module.Property {

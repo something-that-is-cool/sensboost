@@ -43,7 +43,12 @@ func (app *App) bindModuleTo(m module.Module, c module.Config, char string) func
 		app.userConf.Lock()
 		defer app.userConf.Unlock()
 
+		if mod, ok := app.userConf.V.CharBinds[char]; ok {
+			delete(app.userConf.V.Binds, mod)
+		}
 		app.userConf.V.Binds[c.Identifier()] = char
+		app.userConf.V.CharBinds[char] = c.Identifier()
+
 		app.hm.Handle(char, app.bindToggleModule(c.Identifier(), m))
 	}
 }
@@ -83,11 +88,14 @@ func (app *App) bindToggleModule(id string, m module.Module) func() {
 		app.data.Lock()
 		defer app.data.Unlock()
 
-		t := m.(modulesutil.ToggleableModule)
-		v, _ := t.Value()
+		t, ok := m.(modulesutil.ToggleableModule)
+		if !ok {
+			return
+		}
+		v := t.State()
 
 		fyne.DoAndWait(func() {
-			if err := t.Set(!v); err != nil {
+			if err := t.UpdateState(!v); err != nil {
 				app.conf.Logger.Error("cannot toggle module state", "id", id)
 			}
 		})
@@ -105,6 +113,7 @@ func (app *App) loadBinds(conf *UserConfig) map[string]func() {
 			continue
 		}
 		x[key] = app.bindToggleModule(id, m)
+		conf.CharBinds[key] = id
 	}
 	return x
 }

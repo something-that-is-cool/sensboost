@@ -64,7 +64,14 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 	if len(configs) == 0 {
 		return errors.New("no modules created")
 	}
-	modules := app.createModulesFromConfigs(configs)
+	modules, ok, err := app.createModulesFromConfigs(configs)
+	if !ok && err != nil {
+		// no modules created = aborting start
+		return fmt.Errorf("create modules from configs: %w", err)
+	}
+	if err != nil {
+		app.conf.Logger.Error("error creating modules from configs", "err", err.Error())
+	}
 	app.data.V.modules = modules
 
 	// create hotkey manager after modules initialized !!!!!
@@ -191,7 +198,7 @@ func (app *App) close(main bool, cause error) error {
 	// close window last of all !!!
 	if !main {
 		//fixme:hack that prevents random window deadlock on close
-		fyne.Do(app.closeWin) // fyne.DoAndWait
+		fyne.Do(app.closeWin)
 		return nil
 	}
 	app.closeWin()

@@ -9,23 +9,18 @@ import (
 )
 
 type ByteToggleModule struct {
-	Signature []byte
-	Offset    uintptr //optional
-	Original  []byte  //optional
-	Patch     []byte
-	Process   *win.Process
-	Error     func(error)
-	OnToggle  func(bool)
+	Sig     SignatureSettings
+	Process *win.Process
+
+	Error    func(error)
+	OnToggle func(bool)
 }
 
-func (conf ByteToggleModule) New() ToggleableModule {
+func (conf ByteToggleModule) New() (ToggleableModule, error) {
 	m := &byteToggleModule{
-		sig:    conf.Signature,
-		orig:   conf.Original,
-		patch:  conf.Patch,
-		offset: conf.Offset,
-		proc:   conf.Process,
-		err:    conf.Error,
+		sig:  conf.Sig,
+		proc: conf.Process,
+		err:  conf.Error,
 	}
 	m.check = &widget.Check{Text: ToggleDisabled}
 	m.check.OnChanged = CheckSet(conf.Error, m.check, func(b bool, check *widget.Check) error {
@@ -39,14 +34,13 @@ func (conf ByteToggleModule) New() ToggleableModule {
 		conf.OnToggle(b)
 		return nil
 	})
-	return m
+	return m, nil
 }
 
 var _ ToggleableModule = (*byteToggleModule)(nil)
 
 type byteToggleModule struct {
-	sig, orig, patch []byte
-	offset           uintptr
+	sig SignatureSettings
 
 	proc *win.Process
 	err  func(error)
@@ -56,22 +50,26 @@ type byteToggleModule struct {
 	check *widget.Check
 }
 
-func (m *byteToggleModule) Set(b bool) error {
+// UpdateState ...
+func (m *byteToggleModule) UpdateState(b bool) error {
 	m.check.SetChecked(b)
 	return nil
 }
 
-func (m *byteToggleModule) Value() (bool, bool) {
+// State ...
+func (m *byteToggleModule) State() bool {
 	if m.t == nil {
-		return false, false
+		return false
 	}
-	return m.t.Enabled(), true
+	return m.t.Enabled()
 }
 
+// CreateObjects ...
 func (m *byteToggleModule) CreateObjects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{m.check}
 }
 
+// Disable ...
 func (m *byteToggleModule) Disable() {
 	if m.t == nil || !m.t.Enabled() {
 		return
@@ -83,16 +81,16 @@ func (m *byteToggleModule) lazyToggler() (*win.ByteToggler, error) {
 	if m.t != nil {
 		return m.t, nil
 	}
-	addr, err := win.ScanSignature(m.proc, m.proc.ModuleSize, m.proc.Module, m.sig)
+	addr, err := win.ScanSignature(m.proc, m.proc.ModuleSize, m.proc.Module, m.sig.Signature)
 	if err != nil {
-		addr, err = win.ScanSignature(m.proc, m.proc.ModuleSize, m.proc.Module, m.patch)
+		addr, err = win.ScanSignature(m.proc, m.proc.ModuleSize, m.proc.Module, m.sig.Patch)
 		if err != nil {
 			return nil, fmt.Errorf("signature not found: %w", err)
 		}
 	}
-	addr += m.offset
-	if len(m.orig) == 0 {
-		m.orig = m.sig
+	addr += m.sig.Offset
+	if m.sig.Original == nil {
+		m.sig.Original = m.sig.Signature
 	}
 	//if len(m.Signature) < len(m.Patch) {
 	// alloc for injection ?
@@ -100,10 +98,10 @@ func (m *byteToggleModule) lazyToggler() (*win.ByteToggler, error) {
 	t := &win.ByteToggler{
 		Process:  m.proc,
 		Address:  addr,
-		Original: m.orig,
-		Patch:    m.patch,
+		Original: m.sig.Original,
+		Patch:    m.sig.Patch,
 	}
-	testAddr, _ := win.ScanSignature(m.proc, uintptr(len(m.patch)), addr, m.patch)
+	testAddr, _ := win.ScanSignature(m.proc, uintptr(len(m.sig.Patch)), addr, m.sig.Patch)
 	if testAddr != 0 {
 		t.SetState(true)
 	}

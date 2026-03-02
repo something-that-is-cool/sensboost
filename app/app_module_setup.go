@@ -15,6 +15,7 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 		app.createNoParticleModule(proc),
 		app.createNoFireModule(proc),
 		app.createZoomModule(proc),
+		app.createTimeModule(proc),
 	}
 }
 
@@ -78,6 +79,16 @@ func (app *App) createZoomModule(proc *win.Process) module.Config {
 		Error:   app.onError("zoom"),
 	}
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
+	return conf
+}
+
+func (app *App) createTimeModule(proc *win.Process) module.Config {
+	conf := &modules.Time{
+		Process: proc,
+		Error:   app.onError("time"),
+	}
+	conf.OnUpdateState = app.onModuleToggled(conf.Identifier())
+	conf.OnUpdateValue = onModuleValueChanged[int32](app, conf.Identifier())
 	return conf
 }
 
