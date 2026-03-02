@@ -252,3 +252,5 @@ func (app *App) closeWin() {
 
 //fixme very rarely the app process can freeze forever (while the fyne window closes)
 //upd: it starts closing window but not ends, so the problem is probably fyne.DoAndWait
+
+// todo fix this mess; get rid of the data mutex: init app, win, etc on Config.New

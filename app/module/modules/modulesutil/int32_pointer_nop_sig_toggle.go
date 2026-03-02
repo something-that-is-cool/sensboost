@@ -68,7 +68,7 @@ func (conf Int32PointerNopSigToggle) New() (ToggleableModuleWithValue[int32], er
 		Max:     float64(conf.Max),
 		Default: float64(conf.Default),
 		OnEditSlider: func(_ *widget.Slider, _, new float64) {
-			v := int32(math.Floor(new))
+			v := int32(math.Ceil(new))
 			i.writeValue(v)
 			conf.OnValueChanged(v)
 		},
@@ -111,7 +111,7 @@ func (i *int32PointerNopSigToggle) SetValue(v int32) error {
 
 // Value ...
 func (i *int32PointerNopSigToggle) Value() (int32, bool) {
-	v := math.Floor(i.slider.Value)
+	v := math.Ceil(i.slider.Value)
 	return int32(v), true
 }
 
