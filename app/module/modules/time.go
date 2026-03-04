@@ -14,7 +14,7 @@ var (
 		BaseAddress: 0x01921888,
 		Offsets:     []uintptr{0x10, 0x58, 0x58, 0xD8, 0x0, 0x38, 0x194},
 	}
-	timeSig = modulesutil.SignatureSettings{
+	disableTimeSig = modulesutil.SignatureSettings{
 		Signature: []byte{0x41, 0x89, 0x89, 0x94, 0x01, 0x00, 0x00},
 	}
 )
@@ -33,7 +33,7 @@ type Time struct {
 func (conf *Time) Create(p module.Property) (module.Module, error) {
 	c := modulesutil.Int32PointerNopSigToggle{
 		Ptr:            timePtr,
-		Sig:            timeSig,
+		Sig:            disableTimeSig,
 		Error:          conf.Error,
 		Process:        conf.Process,
 		Max:            15000,

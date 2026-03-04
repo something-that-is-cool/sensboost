@@ -43,15 +43,11 @@ func (app *App) createModulesFromConfigs(configs []module.Config) (*modulesMap, 
 }
 
 func (app *App) mustExtractPropertyUnsafe(conf module.Config) module.Property {
-	property := conf.DefaultProperty()
-	// check for value in user config
 	v, ok := app.userConf.V.Modules[conf.Identifier()]
 	if ok {
-		// extract property from module value
-		property = v
-	} else {
-		// add default property to config
-		app.userConf.V.Modules[conf.Identifier()] = property
+		return v
 	}
+	property := conf.DefaultProperty()
+	app.userConf.V.Modules[conf.Identifier()] = property
 	return property
 }
