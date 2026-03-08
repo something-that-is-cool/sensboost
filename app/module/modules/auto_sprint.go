@@ -13,7 +13,7 @@ var autoSprintSig = modulesutil.SignatureSettings{
 	Patch:     []byte{0x66, 0xB8, 0x01, 0x00, 0x40, 0x30, 0xED},
 }
 
-var _ module.Module = (*autoSprint)(nil)
+var _ module.Config = (*AutoSprint)(nil)
 
 type AutoSprint struct {
 	modulesutil.DefaultDisabled
@@ -42,6 +42,8 @@ func (conf *AutoSprint) Create(p module.Property) (module.Module, error) {
 func (*AutoSprint) Identifier() string {
 	return "auto_sprint"
 }
+
+var _ module.Module = (*autoSprint)(nil)
 
 type autoSprint struct {
 	modulesutil.ToggleableModule

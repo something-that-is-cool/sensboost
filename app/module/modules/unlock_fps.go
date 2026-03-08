@@ -12,7 +12,7 @@ var unlockFPSSignature = modulesutil.SignatureSettings{
 	Signature: []byte{0x41, 0x8B, 0x9D, 0x98, 0x00, 0x00, 0x00},
 }
 
-var _ module.Module = (*unlockFPS)(nil)
+var _ module.Config = (*UnlockFPS)(nil)
 
 type UnlockFPS struct {
 	modulesutil.DefaultDisabled
@@ -42,6 +42,8 @@ func (conf *UnlockFPS) Create(p module.Property) (module.Module, error) {
 func (conf *UnlockFPS) Identifier() string {
 	return "unlock_fps"
 }
+
+var _ module.Module = (*unlockFPS)(nil)
 
 type unlockFPS struct {
 	modulesutil.ToggleableModule

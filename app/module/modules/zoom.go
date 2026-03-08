@@ -13,7 +13,7 @@ var zoomSig = modulesutil.SignatureSettings{
 	Patch:     []byte{0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x0F, 0x2F},
 }
 
-var _ module.Module = (*zoom)(nil)
+var _ module.Config = (*Zoom)(nil)
 
 type Zoom struct {
 	modulesutil.DefaultDisabled
@@ -43,6 +43,8 @@ func (conf *Zoom) Create(p module.Property) (module.Module, error) {
 func (conf *Zoom) Identifier() string {
 	return "zoom"
 }
+
+var _ module.Module = (*zoom)(nil)
 
 type zoom struct {
 	modulesutil.ToggleableModule

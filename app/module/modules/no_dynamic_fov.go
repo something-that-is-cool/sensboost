@@ -12,7 +12,7 @@ var noDynamicFovSig = modulesutil.SignatureSettings{
 	Signature: []byte{0xF3, 0x0F, 0x11, 0x83, 0x78, 0x12, 0x00, 0x00},
 }
 
-var _ module.Module = (*noDynamicFov)(nil)
+var _ module.Config = (*NoDynamicFov)(nil)
 
 type NoDynamicFov struct {
 	modulesutil.DefaultDisabled
@@ -41,6 +41,8 @@ func (conf *NoDynamicFov) Create(p module.Property) (module.Module, error) {
 func (*NoDynamicFov) Identifier() string {
 	return "no_dynamic_fov"
 }
+
+var _ module.Module = (*noDynamicFov)(nil)
 
 type noDynamicFov struct {
 	modulesutil.ToggleableModule

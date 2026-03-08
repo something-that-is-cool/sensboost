@@ -15,7 +15,7 @@ var controllerSensitivityPtr = modulesutil.PointerSettings{
 	Offsets:     []uintptr{0x10, 0x8, 0x8, 0x8, 0x28, 0xB0, 0x68, 0x14},
 }
 
-var _ module.Module = (*controllerSensitivity)(nil)
+var _ module.Config = (*ControllerSensitivity)(nil)
 
 type ControllerSensitivity struct {
 	Process        *win.Process
@@ -62,6 +62,8 @@ func (*ControllerSensitivity) DefaultProperty() module.Property {
 func (*ControllerSensitivity) Identifier() string {
 	return "controller_sensitivity"
 }
+
+var _ module.Module = (*controllerSensitivity)(nil)
 
 type controllerSensitivity struct {
 	modulesutil.ModuleWithValue[float64]

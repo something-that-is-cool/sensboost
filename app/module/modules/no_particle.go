@@ -12,6 +12,8 @@ var noParticleSig = modulesutil.SignatureSettings{
 	Signature: []byte{0xE8, 0x68, 0x4F, 0xCF, 0xFF},
 }
 
+var _ module.Config = (*NoParticle)(nil)
+
 type NoParticle struct {
 	modulesutil.DefaultDisabled
 	Process  *win.Process
@@ -39,6 +41,8 @@ func (conf *NoParticle) Create(p module.Property) (module.Module, error) {
 func (*NoParticle) Identifier() string {
 	return "no_particle"
 }
+
+var _ module.Module = (*noParticle)(nil)
 
 type noParticle struct {
 	modulesutil.ToggleableModule

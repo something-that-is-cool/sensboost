@@ -12,7 +12,7 @@ var noHurtCamSig = modulesutil.SignatureSettings{
 	Signature: []byte{0x66, 0x44, 0x0F, 0x6E, 0x83, 0x6C, 0x0E, 0x00, 0x00},
 }
 
-var _ module.Module = (*noHurtCam)(nil)
+var _ module.Config = (*NoHurtCam)(nil)
 
 type NoHurtCam struct {
 	modulesutil.DefaultDisabled
@@ -41,6 +41,8 @@ func (conf *NoHurtCam) Create(p module.Property) (module.Module, error) {
 func (*NoHurtCam) Identifier() string {
 	return "no_hurt_cam"
 }
+
+var _ module.Module = (*noHurtCam)(nil)
 
 type noHurtCam struct {
 	modulesutil.ToggleableModule
