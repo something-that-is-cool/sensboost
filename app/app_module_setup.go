@@ -15,6 +15,7 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 		app.createNoParticleModule(proc),
 		app.createZoomModule(proc),
 		app.createTimeModule(proc),
+		app.createUnlockFPSModule(proc),
 	}
 }
 
@@ -79,6 +80,15 @@ func (app *App) createTimeModule(proc *win.Process) module.Config {
 	}
 	conf.OnUpdateState = app.onModuleToggled(conf.Identifier())
 	conf.OnUpdateValue = onModuleValueChanged[int32](app, conf.Identifier())
+	return conf
+}
+
+func (app *App) createUnlockFPSModule(proc *win.Process) module.Config {
+	conf := &modules.UnlockFPS{
+		Process: proc,
+		Error:   app.onError("unlock_fps"),
+	}
+	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
