@@ -4,6 +4,8 @@ import (
 	"errors"
 	"syscall"
 	"unsafe"
+
+	"github.com/tailscale/win"
 )
 
 var (
@@ -14,10 +16,9 @@ var (
 type info struct {
 	CbSize uint32
 	Flags  uint32
-	_      uintptr
-	_      struct {
-		X, Y int32
-	}
+
+	_ uintptr
+	_ win.POINT
 }
 
 func getInfo() (i info, err error) {
