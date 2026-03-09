@@ -98,5 +98,5 @@ func formatFloatWithRemainder(f float64) string {
 }
 
 func formatFloatDefault(f float64) string {
-	return fmt.Sprintf("%g", f)
+	return fmt.Sprintf("%.0f", f)
 }
