@@ -8,9 +8,13 @@ import (
 )
 
 type SliderWithTrackedInput struct {
-	Min, Max, Default float64
-	InitSlider        func(*widget.Slider)
-	InitInput         func(*widget.Entry)
+	Min, Max, Default, Step float64
+
+	ShowRemainder bool
+	FormatFloat   func(float64) string
+
+	InitSlider func(*widget.Slider)
+	InitInput  func(*widget.Entry)
 
 	OnEditSlider func(slier *widget.Slider, old, new float64)
 	OnEditInput  func(input *widget.Entry, old, new string)
@@ -27,6 +31,10 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 	if conf.InitSlider != nil {
 		conf.InitSlider(slider)
 	}
+	if conf.Step <= 0 {
+		conf.Step = 1.0
+	}
+	slider.Step = conf.Step
 	if slider.Value == 0 {
 		slider.SetValue(conf.Default)
 	}
@@ -37,6 +45,13 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 	if input.Text == "" {
 		input.Text = fmt.Sprint(conf.Default)
 	}
+	format := formatFloatDefault
+	if conf.ShowRemainder {
+		format = formatFloatWithRemainder
+	}
+	if conf.FormatFloat != nil {
+		format = formatFloatWithRemainder
+	}
 	sliderRecursive := false
 	inputRecursive := false
 
@@ -46,7 +61,7 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 			return
 		}
 		inputRecursive = true
-		input.SetText(fmt.Sprintf("%g", f))
+		input.SetText(format(f))
 		inputRecursive = false
 	}
 	slider.OnChangeEnded = func(f float64) {
@@ -72,8 +87,16 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 		// handler
 		inputRecursive = true
 		slider.SetValue(f)
-		input.SetText(fmt.Sprintf("%g", f))
+		input.SetText(format(f))
 		inputRecursive = false
 	}
 	return slider, input
+}
+
+func formatFloatWithRemainder(f float64) string {
+	return strconv.FormatFloat(f, 'f', 2, 64)
+}
+
+func formatFloatDefault(f float64) string {
+	return fmt.Sprintf("%g", f)
 }

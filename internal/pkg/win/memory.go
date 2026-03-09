@@ -9,13 +9,25 @@ import (
 )
 
 func WriteMemory[T any](p *Process, addr uintptr, val T) error {
-	return w.WriteProcessMemory(
+	size := unsafe.Sizeof(val)
+	var oldProtect uint32
+
+	err := w.VirtualProtectEx(p.Handle, addr, size, w.PAGE_EXECUTE_READWRITE, &oldProtect)
+	if err != nil {
+		return fmt.Errorf("virtual protect (unlock): %w", err)
+	}
+	err = w.WriteProcessMemory(
 		p.Handle,
 		addr,
 		(*byte)(unsafe.Pointer(&val)),
-		unsafe.Sizeof(val),
+		size,
 		nil,
 	)
+	var temp uint32
+	if _ = w.VirtualProtectEx(p.Handle, addr, size, oldProtect, &temp); err != nil {
+		return fmt.Errorf("write process memory: %w", err)
+	}
+	return nil
 }
 
 func ReadMemory[T any](p *Process, addr uintptr) (val T, err error) {

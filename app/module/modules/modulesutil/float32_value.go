@@ -15,12 +15,13 @@ type Float32Module struct { // so float64 would be DoublePointerModule
 	Process *win.Process
 	Error   func(error)
 
-	Min, Max, Default float64
-	SliderToMemory    func(float64) float32
-	MemoryToSlider    func(float32) float64
+	Min, Max, Default, Step float64
+	SliderToMemory          func(float64) float32
+	MemoryToSlider          func(float32) float64
 
-	Ptr          PointerSettings
-	FinalAddress uintptr
+	Ptr            PointerSettings
+	FinalAddress   uintptr
+	ResolveAddress func() (uintptr, error)
 
 	OnValueChanged func(float64)
 }
@@ -34,15 +35,16 @@ func (conf Float32Module) New() (ModuleWithValue[float64], error) {
 		conf.MemoryToSlider = func(f float32) float64 { return float64(f) }
 	}
 	f := &float32Module{
-		err:  conf.Error,
-		proc: conf.Process,
-		sToM: conf.SliderToMemory,
-		mToS: conf.MemoryToSlider,
-		min:  conf.Min,
-		max:  conf.Max,
-		def:  conf.Default,
-		ptr:  conf.Ptr,
-		a:    conf.FinalAddress,
+		err:     conf.Error,
+		proc:    conf.Process,
+		sToM:    conf.SliderToMemory,
+		mToS:    conf.MemoryToSlider,
+		min:     conf.Min,
+		max:     conf.Max,
+		def:     conf.Default,
+		ptr:     conf.Ptr,
+		a:       conf.FinalAddress,
+		resolve: conf.ResolveAddress,
 	}
 	v, err := f.initialRead()
 	if err != nil {
@@ -50,9 +52,10 @@ func (conf Float32Module) New() (ModuleWithValue[float64], error) {
 		conf.Error(fmt.Errorf("initial read: %w", err))
 	}
 	c := fyneutil.SliderWithTrackedInput{
+		Default: v,
 		Min:     conf.Min,
 		Max:     conf.Max,
-		Default: v,
+		Step:    conf.Step,
 		OnEditSlider: func(_ *widget.Slider, _, new float64) {
 			if !f.forceWrite(new) {
 				return
@@ -85,6 +88,8 @@ type float32Module struct {
 		notFirst bool
 	}]
 	a uintptr
+
+	resolve func() (uintptr, error)
 }
 
 // CreateObjects ...
@@ -160,6 +165,14 @@ func (m *float32Module) initialRead() (float64, error) {
 func (m *float32Module) resolveAddress() (uintptr, error) {
 	if m.a != 0 {
 		return m.a, nil
+	}
+	if m.resolve != nil {
+		a, err := m.resolve()
+		if err != nil {
+			return 0, err
+		}
+		m.a = a
+		return a, nil
 	}
 	addr, err := win.ResolvePointerAddress(m.proc, m.proc.Module, m.ptr.BaseAddress, m.ptr.Offsets)
 	if err != nil {

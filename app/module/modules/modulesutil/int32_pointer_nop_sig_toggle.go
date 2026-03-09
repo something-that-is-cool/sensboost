@@ -15,7 +15,8 @@ type Int32PointerNopSigToggle struct {
 	Ptr PointerSettings
 	Sig SignatureSettings
 
-	FinalAddr uintptr
+	FinalAddr      uintptr
+	ResolveAddress func() (uintptr, error)
 
 	Error   func(error)
 	Process *win.Process
@@ -42,7 +43,8 @@ func (conf Int32PointerNopSigToggle) New() (ToggleableModuleWithValue[int32], er
 		proc: conf.Process,
 		//sToM: conf.SliderToMemory,
 		//mToS: conf.MemoryToSlider,
-		addr: conf.FinalAddr,
+		addr:    conf.FinalAddr,
+		resolve: conf.ResolveAddress,
 	}
 	togglerConf := win.SignatureNopTogglerConfig{
 		Module:    mod,
@@ -97,7 +99,8 @@ type int32PointerNopSigToggle struct {
 
 	toggler *win.SignatureNopToggler
 
-	addr uintptr
+	addr    uintptr
+	resolve func() (uintptr, error)
 }
 
 // CreateObjects ...
@@ -149,6 +152,14 @@ func (i *int32PointerNopSigToggle) writeValue(v int32) {
 func (i *int32PointerNopSigToggle) lazyAddress() (uintptr, error) {
 	if i.addr != 0 {
 		return i.addr, nil
+	}
+	if i.resolve != nil {
+		a, err := i.resolve()
+		if err != nil {
+			return 0, err
+		}
+		i.addr = a
+		return a, nil
 	}
 	addr, err := i.resolveAddress()
 	if err != nil {
