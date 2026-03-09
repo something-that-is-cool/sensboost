@@ -15,6 +15,8 @@ type Int32PointerNopSigToggle struct {
 	Ptr PointerSettings
 	Sig SignatureSettings
 
+	FinalAddr uintptr
+
 	Error   func(error)
 	Process *win.Process
 
@@ -40,6 +42,7 @@ func (conf Int32PointerNopSigToggle) New() (ToggleableModuleWithValue[int32], er
 		proc: conf.Process,
 		//sToM: conf.SliderToMemory,
 		//mToS: conf.MemoryToSlider,
+		addr: conf.FinalAddr,
 	}
 	togglerConf := win.SignatureNopTogglerConfig{
 		Module:    mod,
