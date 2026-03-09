@@ -24,7 +24,7 @@ type ControllerSensitivity struct {
 }
 
 func (conf *ControllerSensitivity) Create(p module.Property) (module.Module, error) {
-	fc := &modulesutil.FloatPointerModule{
+	fc := &modulesutil.Float32Module{
 		Process:        conf.Process,
 		Error:          conf.Error,
 		OnValueChanged: conf.OnValueChanged,

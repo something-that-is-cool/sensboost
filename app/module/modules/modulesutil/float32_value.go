@@ -11,7 +11,7 @@ import (
 	"github.com/something-that-is-cool/zutil/internal/pkg/win"
 )
 
-type FloatPointerModule struct { // so float64 would be DoublePointerModule
+type Float32Module struct { // so float64 would be DoublePointerModule
 	Process *win.Process
 	Error   func(error)
 
@@ -19,14 +19,21 @@ type FloatPointerModule struct { // so float64 would be DoublePointerModule
 	SliderToMemory    func(float64) float32
 	MemoryToSlider    func(float32) float64
 
-	Ptr PointerSettings
+	Ptr          PointerSettings
+	FinalAddress uintptr
 
 	OnValueChanged func(float64)
 }
 
 // New ...
-func (conf FloatPointerModule) New() (ModuleWithValue[float64], error) {
-	f := &floatPointerModule{
+func (conf Float32Module) New() (ModuleWithValue[float64], error) {
+	if conf.SliderToMemory == nil {
+		conf.SliderToMemory = func(f float64) float32 { return float32(f) }
+	}
+	if conf.MemoryToSlider == nil {
+		conf.MemoryToSlider = func(f float32) float64 { return float64(f) }
+	}
+	f := &float32Module{
 		err:  conf.Error,
 		proc: conf.Process,
 		sToM: conf.SliderToMemory,
@@ -35,6 +42,7 @@ func (conf FloatPointerModule) New() (ModuleWithValue[float64], error) {
 		max:  conf.Max,
 		def:  conf.Default,
 		ptr:  conf.Ptr,
+		a:    conf.FinalAddress,
 	}
 	v, err := f.initialRead()
 	if err != nil {
@@ -56,9 +64,9 @@ func (conf FloatPointerModule) New() (ModuleWithValue[float64], error) {
 	return f, nil
 }
 
-var _ ModuleWithValue[float64] = (*floatPointerModule)(nil)
+var _ ModuleWithValue[float64] = (*float32Module)(nil)
 
-type floatPointerModule struct {
+type float32Module struct {
 	err  func(error)
 	proc *win.Process
 
@@ -80,18 +88,18 @@ type floatPointerModule struct {
 }
 
 // CreateObjects ...
-func (m *floatPointerModule) CreateObjects() []fyne.CanvasObject {
+func (m *float32Module) CreateObjects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{m.slider, m.input}
 }
 
 // SetValue ...
-func (m *floatPointerModule) SetValue(v float64) error {
+func (m *float32Module) SetValue(v float64) error {
 	m.slider.SetValue(v)
 	return nil
 }
 
 // Value ...
-func (m *floatPointerModule) Value() (float64, bool) {
+func (m *float32Module) Value() (float64, bool) {
 	m.val.RLock()
 	defer m.val.RUnlock()
 
@@ -102,11 +110,11 @@ func (m *floatPointerModule) Value() (float64, bool) {
 }
 
 // Disable ...
-func (m *floatPointerModule) Disable() {
+func (m *float32Module) Disable() {
 	m.forceWrite(m.def) // already normalizes !!!
 }
 
-func (m *floatPointerModule) write(val float64) error {
+func (m *float32Module) write(val float64) error {
 	m.val.Lock()
 	defer m.val.Unlock()
 
@@ -127,7 +135,7 @@ func (m *floatPointerModule) write(val float64) error {
 	return nil
 }
 
-func (m *floatPointerModule) forceWrite(val float64) bool {
+func (m *float32Module) forceWrite(val float64) bool {
 	err := m.write(val)
 	if err != nil {
 		m.err(fmt.Errorf("write %g: %w", val, err))
@@ -136,7 +144,7 @@ func (m *floatPointerModule) forceWrite(val float64) bool {
 	return true
 }
 
-func (m *floatPointerModule) initialRead() (float64, error) {
+func (m *float32Module) initialRead() (float64, error) {
 	addr, err := m.resolveAddress()
 	if err != nil {
 		return 0, fmt.Errorf("resolve address: %w", err)
@@ -149,7 +157,7 @@ func (m *floatPointerModule) initialRead() (float64, error) {
 	return m.mToS(v), nil
 }
 
-func (m *floatPointerModule) resolveAddress() (uintptr, error) {
+func (m *float32Module) resolveAddress() (uintptr, error) {
 	if m.a != 0 {
 		return m.a, nil
 	}
