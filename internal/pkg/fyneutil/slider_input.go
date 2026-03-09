@@ -46,7 +46,7 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 			return
 		}
 		inputRecursive = true
-		input.SetText(fmt.Sprint(f))
+		input.SetText(fmt.Sprintf("%g", f))
 		inputRecursive = false
 	}
 	slider.OnChangeEnded = func(f float64) {
@@ -72,7 +72,7 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 		// handler
 		inputRecursive = true
 		slider.SetValue(f)
-		input.SetText(fmt.Sprint(f))
+		input.SetText(fmt.Sprintf("%g", f))
 		inputRecursive = false
 	}
 	return slider, input
