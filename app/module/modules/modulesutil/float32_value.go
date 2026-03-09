@@ -16,8 +16,10 @@ type Float32Module struct { // so float64 would be DoublePointerModule
 	Error   func(error)
 
 	Min, Max, Default, Step float64
-	SliderToMemory          func(float64) float32
-	MemoryToSlider          func(float32) float64
+	ShowRemainer            bool
+
+	SliderToMemory func(float64) float32
+	MemoryToSlider func(float32) float64
 
 	Ptr            PointerSettings
 	FinalAddress   uintptr
@@ -52,10 +54,11 @@ func (conf Float32Module) New() (ModuleWithValue[float64], error) {
 		conf.Error(fmt.Errorf("initial read: %w", err))
 	}
 	c := fyneutil.SliderWithTrackedInput{
-		Default: v,
-		Min:     conf.Min,
-		Max:     conf.Max,
-		Step:    conf.Step,
+		Default:       v,
+		Min:           conf.Min,
+		Max:           conf.Max,
+		Step:          conf.Step,
+		ShowRemainder: conf.ShowRemainer,
 		OnEditSlider: func(_ *widget.Slider, _, new float64) {
 			if !f.forceWrite(new) {
 				return
