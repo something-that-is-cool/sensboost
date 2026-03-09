@@ -42,15 +42,15 @@ func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 	if conf.InitInput != nil {
 		conf.InitInput(input)
 	}
-	if input.Text == "" {
-		input.Text = fmt.Sprint(conf.Default)
-	}
 	format := formatFloatDefault
 	if conf.ShowRemainder {
 		format = formatFloatWithRemainder
 	}
 	if conf.FormatFloat != nil {
 		format = formatFloatWithRemainder
+	}
+	if input.Text == "" {
+		input.Text = format(conf.Default)
 	}
 	sliderRecursive := false
 	inputRecursive := false
