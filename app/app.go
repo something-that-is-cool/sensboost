@@ -185,7 +185,7 @@ func (app *App) close(main bool, cause error) error {
 	if cause == nil {
 		cause = closeCauseExternal
 	}
-	app.conf.Logger.Info("closing app...")
+	app.conf.Logger.Info("closing app...", "cause", cause.Error())
 	defer func() {
 		app.conf.Logger.Info("closed app.", "elapsed", time.Since(start).String())
 	}()
