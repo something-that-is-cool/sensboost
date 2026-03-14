@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-vgo/robotgo"
 	"github.com/something-that-is-cool/zutil/app"
 	"github.com/something-that-is-cool/zutil/internal/misc"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 
 	_ "github.com/ebitengine/hideconsole"
 )
@@ -35,11 +37,17 @@ func main() {
 		doPanic(fmt.Errorf("error creating app: %w", err))
 	}
 	log.Info("created app instance.")
-	defer a.CloseMain() //nolint:errcheck
+	defer closeApp(log, a)
 
 	log.Info("starting app...")
 	if err = a.Run(); err != nil {
 		doPanic(fmt.Errorf("error running app: %w", err))
+	}
+}
+
+func closeApp(l *slog.Logger, a *app.App) {
+	if err := a.Close(); err != nil && !errors.Is(err, e.ErrClosed) {
+		l.Error("close app", "err", err.Error())
 	}
 }
 

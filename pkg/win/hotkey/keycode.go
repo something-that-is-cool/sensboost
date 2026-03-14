@@ -1,4 +1,4 @@
-package win
+package hotkey
 
 import (
 	hook "github.com/robotn/gohook"

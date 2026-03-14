@@ -8,7 +8,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
+	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 )
 
 func (app *App) createModuleSettingsObject(m module.Module, c module.Config, w fyne.Window) fyne.CanvasObject {
@@ -18,7 +18,7 @@ func (app *App) createModuleSettingsObject(m module.Module, c module.Config, w f
 	return fyneutil.NewClickableIcon(theme.SettingsIcon(), func() {
 		dialog.ShowCustom("Settings", "Close", container.NewVBox(
 			widget.NewButton("Description", func() {
-				app.showInfo("Description", m.Description(), true)
+				app.showInfo("Description", m.Description())
 			}),
 			widget.NewButton("Bind", app.bindButton(w, m, c)),
 		), w)
@@ -27,6 +27,6 @@ func (app *App) createModuleSettingsObject(m module.Module, c module.Config, w f
 
 func (app *App) createDescriptionButton(m module.Module) fyne.CanvasObject {
 	return fyneutil.NewClickableIcon(theme.InfoIcon(), func() {
-		app.showInfo("Description", m.Description(), true)
+		app.showInfo("Description", m.Description())
 	})
 }

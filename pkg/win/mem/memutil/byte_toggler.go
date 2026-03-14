@@ -1,12 +1,15 @@
-package win
+package memutil
 
 import (
 	"fmt"
 	"sync/atomic"
+
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 type ByteToggler struct {
-	Process  *Process
+	Process  *win.Process
 	Address  uintptr
 	Offset   uintptr //optional
 	Original []byte
@@ -17,18 +20,22 @@ type ByteToggler struct {
 
 func (t *ByteToggler) Set(b bool) error {
 	if t.state.Load() == b {
-		// prevent redundant calls
 		return fmt.Errorf("state is already %t", b)
 	}
 	data := t.Original
 	if b {
 		data = t.Patch
 	}
-	if err := Patch(t.Process, t.Address+t.Offset, data); err != nil {
-		return err
+	targetAddr := t.Address + t.Offset
+	if err := mem.Patch(t.Process, targetAddr, data); err != nil {
+		return fmt.Errorf("patch at 0x%X: %w", targetAddr, err)
 	}
 	t.state.Store(b)
 	return nil
+}
+
+func (t *ByteToggler) Toggle() error {
+	return t.Set(!t.Enabled())
 }
 
 func (t *ByteToggler) Enabled() bool {
@@ -36,5 +43,5 @@ func (t *ByteToggler) Enabled() bool {
 }
 
 func (t *ByteToggler) SetState(b bool) {
-	t.state.Store(b)
+	t.state.CompareAndSwap(!b, b)
 }

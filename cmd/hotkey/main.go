@@ -7,14 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/hotkey"
 )
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	mgr := win.HotkeyManagerConfig{
+	mgr := hotkey.ManagerConfig{
 		Handlers: map[string]func(){
 			"h": func() {
 				fmt.Println("h")

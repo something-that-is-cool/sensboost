@@ -7,8 +7,10 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem/memutil"
 )
 
 type Int32PointerNopSigToggle struct {
@@ -31,11 +33,7 @@ type Int32PointerNopSigToggle struct {
 }
 
 // New ...
-func (conf Int32PointerNopSigToggle) New() (ToggleableModuleWithValue[int32], error) {
-	mod, size, err := conf.Process.GetModuleInfo()
-	if err != nil {
-		return nil, fmt.Errorf("get process module: %w", err)
-	}
+func (conf Int32PointerNopSigToggle) New() (_ ToggleableModuleWithValue[int32], err error) {
 	i := &int32PointerNopSigToggle{
 		p:    conf.Ptr,
 		s:    conf.Sig,
@@ -46,26 +44,24 @@ func (conf Int32PointerNopSigToggle) New() (ToggleableModuleWithValue[int32], er
 		addr:    conf.FinalAddr,
 		resolve: conf.ResolveAddress,
 	}
-	togglerConf := win.SignatureNopTogglerConfig{
-		Module:    mod,
-		Size:      size,
+	togglerConf := memutil.SignatureNopTogglerConfig{
 		Process:   conf.Process,
 		Signature: conf.Sig.Signature,
-		NopSig:    conf.Sig.Patch,
+		Patch:     conf.Sig.Patch,
 	}
 	i.toggler, err = togglerConf.New()
 	if err != nil {
 		return nil, fmt.Errorf("create nop sig toggler: %w", err)
 	}
 	i.check = &widget.Check{Text: ToggleDisabled}
-	i.check.OnChanged = CheckSet(conf.Error, i.check, func(b bool, _ *widget.Check) error {
-		if err := i.toggler.Set(b); err != nil {
+	i.check.OnChanged = CheckSet(conf.Error, i.check, func(v bool, _ *widget.Check) error {
+		if err := i.toggler.Set(v); err != nil {
 			return fmt.Errorf("set toggler: %w", err)
 		}
 		// force writing value
 		i.writeValue(int32(i.slider.Value))
 		// and calling the handler
-		conf.OnStateChanged(b)
+		conf.OnStateChanged(v)
 		return nil
 	})
 	i.slider, i.input = fyneutil.SliderWithTrackedInput{
@@ -97,7 +93,7 @@ type int32PointerNopSigToggle struct {
 	input  *widget.Entry
 	check  *widget.Check
 
-	toggler *win.SignatureNopToggler
+	toggler *memutil.SignatureNopToggler
 
 	addr    uintptr
 	resolve func() (uintptr, error)
@@ -111,6 +107,9 @@ func (i *int32PointerNopSigToggle) CreateObjects() []fyne.CanvasObject {
 
 // SetValue ...
 func (i *int32PointerNopSigToggle) SetValue(v int32) error {
+	if int32(i.slider.Value) == v {
+		return fmt.Errorf("value is already %d", v)
+	}
 	i.slider.SetValue(float64(v))
 	return nil
 }
@@ -122,8 +121,11 @@ func (i *int32PointerNopSigToggle) Value() (int32, bool) {
 }
 
 // UpdateState ...
-func (i *int32PointerNopSigToggle) UpdateState(b bool) error {
-	i.check.SetChecked(b)
+func (i *int32PointerNopSigToggle) UpdateState(v bool) error {
+	if i.check.Checked == v {
+		return fmt.Errorf("state is already %t", v)
+	}
+	i.check.SetChecked(v)
 	return nil
 }
 
@@ -143,8 +145,9 @@ func (i *int32PointerNopSigToggle) writeValue(v int32) {
 		i.err(fmt.Errorf("lazy get (resolve) ptr address: %w", err))
 		return
 	}
-	err = win.WriteMemory[int32](i.proc, addr, v)
+	err = mem.WriteMemory[int32](i.proc, addr, v)
 	if err != nil {
+		i.addr = 0 //force recalculate address
 		i.err(fmt.Errorf("write to pointer %d: %w", v, err))
 	}
 }
@@ -170,9 +173,5 @@ func (i *int32PointerNopSigToggle) lazyAddress() (uintptr, error) {
 }
 
 func (i *int32PointerNopSigToggle) resolveAddress() (uintptr, error) {
-	mod, _, err := i.proc.GetModuleInfo()
-	if err != nil {
-		return 0, fmt.Errorf("get process module: %w", err)
-	}
-	return win.ResolvePointerAddress(i.proc, mod, i.p.BaseAddress, i.p.Offsets)
+	return mem.ResolvePointerAddress(i.proc, i.p.BaseAddress, i.p.Offsets)
 }

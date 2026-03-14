@@ -5,11 +5,12 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 var unlockFPSSignature = modulesutil.SignatureSettings{
-	Signature: []byte{0x41, 0x8B, 0x9D, 0x98, 0x00, 0x00, 0x00},
+	Signature: mem.MustParseSignature("41 8B 9D 98 00 00 00"),
 }
 
 var _ module.Config = (*UnlockFPS)(nil)
@@ -34,7 +35,7 @@ func (conf *UnlockFPS) Create(p module.Property) (module.Module, error) {
 		return nil, fmt.Errorf("create byte toggler module: %w", err)
 	}
 	m := &unlockFPS{ToggleableModule: b}
-	_ = m.UpdateState(p.Enabled)
+	m.Edit(p)
 	return m, nil
 }
 

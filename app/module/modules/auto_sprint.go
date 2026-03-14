@@ -5,12 +5,13 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 var autoSprintSig = modulesutil.SignatureSettings{
-	Signature: []byte{0x0F, 0xB6, 0x41, 0x63, 0x40, 0x32, 0xED},
-	Patch:     []byte{0x66, 0xB8, 0x01, 0x00, 0x40, 0x30, 0xED},
+	Signature: mem.MustParseSignature("0F B6 41 63 40 32 ED"),
+	Patch:     mem.MustParseSignature("66 B8 01 00 40 30 ED"),
 }
 
 var _ module.Config = (*AutoSprint)(nil)
@@ -34,7 +35,7 @@ func (conf *AutoSprint) Create(p module.Property) (module.Module, error) {
 		return nil, fmt.Errorf("create byte toggle module: %w", err)
 	}
 	m := &autoSprint{ToggleableModule: b}
-	_ = m.UpdateState(p.Enabled)
+	m.Edit(p)
 	return m, nil
 }
 

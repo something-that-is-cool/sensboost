@@ -5,11 +5,12 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 var noHurtCamSig = modulesutil.SignatureSettings{
-	Signature: []byte{0x66, 0x44, 0x0F, 0x6E, 0x83, 0x6C, 0x0E, 0x00, 0x00},
+	Signature: mem.MustParseSignature("66 44 0F 6E 83 6C 0E 00 00"),
 }
 
 var _ module.Config = (*NoHurtCam)(nil)
@@ -33,7 +34,7 @@ func (conf *NoHurtCam) Create(p module.Property) (module.Module, error) {
 		return nil, fmt.Errorf("create nop sig toggle module: %w", err)
 	}
 	n := &noHurtCam{ToggleableModule: s}
-	_ = n.UpdateState(p.Enabled)
+	n.Edit(p)
 	return n, nil
 }
 

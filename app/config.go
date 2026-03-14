@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"fyne.io/fyne/v2"
+	"github.com/something-that-is-cool/zutil/pkg/win"
 )
 
 type Config struct {
@@ -30,7 +31,8 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	app := &App{conf: conf}
 	trackerConf := win.ProcessTrackerConfig{
 		CloseHandlers: []func(){func() {
-			_ = app.close(false, closeCauseTrackerClosed)
+			_ = app.closeLogic(closeCauseTrackerClosed)
+			fyne.DoAndWait(app.app.Quit)
 		}},
 		Process: proc,
 	}
@@ -38,6 +40,7 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create tracker: %w", err)
 	}
+	app.deployFyne()
 	app.ctx, app.cancel = context.WithCancel(parent)
 	return app, nil
 }

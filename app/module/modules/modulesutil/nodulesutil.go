@@ -1,6 +1,9 @@
 package modulesutil
 
-import "fyne.io/fyne/v2"
+import (
+	"fyne.io/fyne/v2"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
+)
 
 type Module interface {
 	CreateObjects() []fyne.CanvasObject
@@ -30,8 +33,8 @@ type PointerSettings struct {
 }
 
 type SignatureSettings struct {
-	Signature []byte
-	Original  []byte  //optional
-	Patch     []byte  //optional for non byte toggler
-	Offset    uintptr //optional
+	Signature mem.Signature
+	Patch     mem.Signature //optional for nop sig toggler
+	Original  []byte        //optional
+	Offset    uintptr
 }

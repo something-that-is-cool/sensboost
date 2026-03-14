@@ -7,8 +7,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/something-that-is-cool/zutil/internal/misc"
-	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 type Float32Module struct { // so float64 would be DoublePointerModule
@@ -102,6 +103,9 @@ func (m *float32Module) CreateObjects() []fyne.CanvasObject {
 
 // SetValue ...
 func (m *float32Module) SetValue(v float64) error {
+	if mgl64.FloatEqual(m.slider.Value, v) {
+		return fmt.Errorf("value is already %.3f", v)
+	}
 	m.slider.SetValue(v)
 	return nil
 }
@@ -135,7 +139,8 @@ func (m *float32Module) write(val float64) error {
 		return fmt.Errorf("resolve address: %w", err)
 	}
 	toWrite := m.sToM(val)
-	if err = win.WriteMemory[float32](m.proc, addr, toWrite); err != nil {
+	if err = mem.WriteMemory[float32](m.proc, addr, toWrite); err != nil {
+		m.a = 0 //force recalculate address
 		return fmt.Errorf("write memory: %w", err)
 	}
 	m.val.V.v = val
@@ -157,8 +162,9 @@ func (m *float32Module) initialRead() (float64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("resolve address: %w", err)
 	}
-	v, err := win.ReadMemory[float32](m.proc, addr)
+	v, err := mem.ReadMemory[float32](m.proc, addr)
 	if err != nil {
+		m.a = 0 //force recalculate address
 		return 0, fmt.Errorf("read memory: %w", err)
 	}
 	// don't forget to normalize value
@@ -177,7 +183,7 @@ func (m *float32Module) resolveAddress() (uintptr, error) {
 		m.a = a
 		return a, nil
 	}
-	addr, err := win.ResolvePointerAddress(m.proc, m.proc.Module, m.ptr.BaseAddress, m.ptr.Offsets)
+	addr, err := mem.ResolvePointerAddress(m.proc, m.ptr.BaseAddress, m.ptr.Offsets)
 	if err != nil {
 		return 0, err
 	}

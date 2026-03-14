@@ -6,7 +6,9 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem/memutil"
 )
 
 type ByteToggleModule struct {
@@ -24,15 +26,17 @@ func (conf ByteToggleModule) New() (ToggleableModule, error) {
 		err:  conf.Error,
 	}
 	m.check = &widget.Check{Text: ToggleDisabled}
-	m.check.OnChanged = CheckSet(conf.Error, m.check, func(b bool, check *widget.Check) error {
+	m.check.OnChanged = CheckSet(conf.Error, m.check, func(v bool, _ *widget.Check) error {
 		toggler, err := m.lazyToggler()
 		if err != nil {
 			return fmt.Errorf("get byte toggler: %w", err)
 		}
-		if err = toggler.Set(b); err != nil {
+		if err = toggler.Set(v); err != nil {
 			return fmt.Errorf("update byte toggler state: %w", err)
 		}
-		conf.OnToggle(b)
+		if conf.OnToggle != nil {
+			conf.OnToggle(v)
+		}
 		return nil
 	})
 	return m, nil
@@ -46,18 +50,19 @@ type byteToggleModule struct {
 	proc *win.Process
 	err  func(error)
 
-	t *win.ByteToggler
+	t *memutil.ByteToggler
 
 	check *widget.Check
 }
 
-// UpdateState ...
-func (m *byteToggleModule) UpdateState(b bool) error {
-	m.check.SetChecked(b)
+func (m *byteToggleModule) UpdateState(v bool) error {
+	if m.check.Checked == v {
+		return fmt.Errorf("state is already %t", v)
+	}
+	m.check.SetChecked(v)
 	return nil
 }
 
-// State ...
 func (m *byteToggleModule) State() bool {
 	if m.t == nil {
 		return false
@@ -65,45 +70,37 @@ func (m *byteToggleModule) State() bool {
 	return m.t.Enabled()
 }
 
-// CreateObjects ...
 func (m *byteToggleModule) CreateObjects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{m.check}
 }
 
-// Disable ...
 func (m *byteToggleModule) Disable() {
 	if m.t == nil || !m.t.Enabled() {
 		return
 	}
-	_ = m.t.Set(false)
+	_ = m.UpdateState(false)
 }
 
-func (m *byteToggleModule) lazyToggler() (*win.ByteToggler, error) {
+func (m *byteToggleModule) lazyToggler() (*memutil.ByteToggler, error) {
 	if m.t != nil {
 		return m.t, nil
 	}
-	addr, err := win.ScanSignature(m.proc, m.proc.ModuleSize, m.proc.Module, m.sig.Signature)
+	addr, err := mem.ScanSignature(m.proc, m.sig.Signature)
 	if err != nil {
 		return nil, fmt.Errorf("signature not found: %w", err)
 	}
-	if m.sig.Original == nil {
-		m.sig.Original = m.sig.Signature
+	original := m.sig.Original
+	if original == nil {
+		original = m.sig.Signature.Data
 	}
-	//if len(m.Signature) < len(m.Patch) {
-	// alloc for injection ?
-	//}
-	t := &win.ByteToggler{
+	t := &memutil.ByteToggler{
 		Process:  m.proc,
 		Address:  addr,
-		Original: m.sig.Original,
-		Patch:    m.sig.Patch,
+		Original: original,
+		Patch:    m.sig.Patch.Data,
 	}
-	testAddr, _ := win.ScanSignature(m.proc, uintptr(len(m.sig.Patch)), addr, m.sig.Patch)
-	if testAddr != 0 {
-		t.SetState(true)
-	}
-	currentBytes, err := win.ReadBytes(m.proc, addr, uint(len(m.sig.Patch)))
-	if err == nil && bytes.Equal(currentBytes, m.sig.Patch) {
+	currentBytes, err := mem.ReadBytes(m.proc, addr, uint(len(m.sig.Patch.Data)))
+	if err == nil && bytes.Equal(currentBytes, m.sig.Patch.Data) {
 		t.SetState(true)
 	}
 	m.t = t

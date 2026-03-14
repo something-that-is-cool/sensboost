@@ -2,15 +2,16 @@ package modulesutil
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem/memutil"
 )
 
 type SigToggleModule struct {
 	Sig      SignatureSettings
-	Offset   uintptr
 	Process  *win.Process
 	Error    func(error)
 	OnToggle func(bool)
@@ -23,15 +24,17 @@ func (conf SigToggleModule) New() (ToggleableModule, error) {
 		err:  conf.Error,
 	}
 	s.check = &widget.Check{Text: ToggleDisabled}
-	s.check.OnChanged = CheckSet(conf.Error, s.check, func(b bool, check *widget.Check) error {
+	s.check.OnChanged = CheckSet(conf.Error, s.check, func(v bool, _ *widget.Check) error {
 		toggler, err := s.lazyToggler()
 		if err != nil {
 			return fmt.Errorf("get sig toggler: %w", err)
 		}
-		if err = toggler.Set(b); err != nil {
+		if err = toggler.Set(v); err != nil {
 			return fmt.Errorf("update sig toggler state: %w", err)
 		}
-		conf.OnToggle(b)
+		if conf.OnToggle != nil {
+			conf.OnToggle(v)
+		}
 		return nil
 	})
 	return s, nil
@@ -47,59 +50,52 @@ type sigToggleModule struct {
 
 	check *widget.Check
 
-	t *win.SignatureNopToggler
+	t atomic.Pointer[memutil.SignatureNopToggler]
 }
 
-// CreateObjects ...
 func (m *sigToggleModule) CreateObjects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{m.check}
 }
 
-// UpdateState ...
-func (m *sigToggleModule) UpdateState(b bool) error {
-	m.check.SetChecked(b)
+func (m *sigToggleModule) UpdateState(v bool) error {
+	if m.check.Checked == v {
+		return fmt.Errorf("state is already %t", v)
+	}
+	m.check.SetChecked(v)
 	return nil
 }
 
-// State ...
 func (m *sigToggleModule) State() bool {
-	return m.t.Enabled()
+	t := m.t.Load()
+	if t == nil {
+		return false
+	}
+	return t.Enabled()
 }
 
-func (m *sigToggleModule) lazyToggler() (*win.SignatureNopToggler, error) {
-	if m.t != nil {
-		return m.t, nil
+func (m *sigToggleModule) lazyToggler() (*memutil.SignatureNopToggler, error) {
+	if t := m.t.Load(); t != nil {
+		return t, nil
 	}
-	conf := win.SignatureNopTogglerConfig{
+	conf := memutil.SignatureNopTogglerConfig{
 		Process:   m.proc,
-		Module:    m.proc.Module,
-		Size:      m.proc.ModuleSize,
 		Signature: m.sig.Signature,
-		NopSig:    m.lazyPatch(),
 	}
 	t, err := conf.New()
 	if err != nil {
 		return nil, fmt.Errorf("init toggler: %w", err)
 	}
-	m.t = t
-	//_ = m.toggler.Set(m.toggler.Enabled())
+	if t.Enabled() && !m.check.Checked {
+		_ = m.UpdateState(true)
+	}
+	m.t.Store(t)
 	return t, nil
 }
 
 func (m *sigToggleModule) Disable() {
-	if m.t == nil || !m.t.Enabled() {
+	t := m.t.Load()
+	if t == nil || !t.Enabled() {
 		return
 	}
-	err := m.t.Set(false)
-	if err != nil {
-		m.err(fmt.Errorf("disable (set false): %w", err))
-	}
-}
-
-func (m *sigToggleModule) lazyPatch() []byte {
-	if m.sig.Patch != nil {
-		return m.sig.Patch
-	}
-	m.sig.Patch = win.NopSig(len(m.sig.Signature))
-	return m.sig.Patch
+	_ = m.UpdateState(false)
 }

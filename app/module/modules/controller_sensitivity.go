@@ -7,7 +7,7 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
 )
 
 var controllerSensitivityPtr = modulesutil.PointerSettings{
@@ -44,9 +44,7 @@ func (conf *ControllerSensitivity) Create(p module.Property) (module.Module, err
 		return nil, fmt.Errorf("create float ptr module: %w", err)
 	}
 	c := &controllerSensitivity{ModuleWithValue: f}
-	if v, ok := p.Value.(float64); ok {
-		_ = c.SetValue(v)
-	}
+	c.Edit(p)
 	return c, nil
 }
 
@@ -81,9 +79,7 @@ func (*controllerSensitivity) Description() string {
 
 // Edit ...
 func (c *controllerSensitivity) Edit(p module.Property) {
-	v, ok := p.Value.(float64)
-	if !ok {
-		return
+	if v, ok := p.Value.(float64); ok {
+		_ = c.SetValue(v)
 	}
-	_ = c.SetValue(v)
 }

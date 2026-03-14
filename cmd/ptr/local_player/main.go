@@ -9,7 +9,7 @@ import (
 
 var (
 	baseAddr uintptr = 0x01921DF8
-	offsets          = []uintptr{0x18, 0x38, 0x48, 0x18, 0x340}
+	offsets          = []uintptr{0x30, 0x78, 0x28, 0x58, 0x0}
 )
 
 func main() {
@@ -19,20 +19,10 @@ func main() {
 	}
 	defer proc.Close() //nolint:errcheck
 
-	v, finalAddr, err := mem.ResolvePointerValue[[200]byte](proc, baseAddr, offsets)
+	v, finalAddr, err := mem.ResolvePointerValue[int64](proc, baseAddr, offsets)
 	if err != nil {
 		panic(fmt.Errorf("resolve pointer value: %w", err))
 	}
-	fmt.Printf("resolved pointer value: %q\n", toStr(v))
+	fmt.Println("resolved pointer value:", v)
 	fmt.Printf("address: 0x%x\n", finalAddr)
-}
-
-func toStr(x [200]byte) (s string) {
-	for _, v := range x[:] {
-		if v == 0 {
-			break
-		}
-		s += string(v)
-	}
-	return
 }

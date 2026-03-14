@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 var (
@@ -18,11 +19,7 @@ func main() {
 	}
 	defer proc.Close() //nolint:errcheck
 
-	module, _, err := proc.GetModuleInfo()
-	if err != nil {
-		panic(fmt.Errorf("get process module: %w", err))
-	}
-	v, finalAddr, err := win.ResolvePointerValue[int32](proc, module, baseAddr, offsets)
+	v, finalAddr, err := mem.ResolvePointerValue[int32](proc, baseAddr, offsets)
 	if err != nil {
 		panic(fmt.Errorf("resolve pointer value: %w", err))
 	}

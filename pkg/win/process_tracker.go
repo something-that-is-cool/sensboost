@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/something-that-is-cool/zutil/internal/misc"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	w "golang.org/x/sys/windows"
 )
 
@@ -41,7 +42,7 @@ func (tr *ProcessTracker) Process() *Process {
 
 func (tr *ProcessTracker) Close() bool {
 	if !tr.closed.CompareAndSwap(false, true) {
-		return false
+		return false //e.ErrAlreadyClosed
 	}
 	tr.running.Lock()
 	defer tr.running.Unlock()
@@ -53,13 +54,9 @@ func (tr *ProcessTracker) Close() bool {
 	return true
 }
 
-var ErrTrackerClosed = errors.New("tracker closed")
-
-var ErrAlreadyRunning = errors.New("already running")
-
 func (tr *ProcessTracker) Run(parent context.Context) error {
 	if tr.closed.Load() {
-		return ErrTrackerClosed
+		return e.ErrClosed
 	}
 	if tr.pr.Handle == w.InvalidHandle {
 		tr.Close()
@@ -73,7 +70,7 @@ func (tr *ProcessTracker) Run(parent context.Context) error {
 	tr.running.Lock()
 	if tr.running.V {
 		tr.running.Unlock()
-		return ErrAlreadyRunning
+		return e.ErrAlreadyRunning
 	}
 	tr.ctx, tr.cancel = context.WithCancel(parent)
 	defer tr.cancel()
@@ -97,7 +94,7 @@ func (tr *ProcessTracker) loop(ticker *time.Ticker) error {
 		select {
 		case <-tr.ctx.Done():
 			return tr.ctx.Err()
-		case <-ticker.C:
+		case <-ticker.C: //fixme find a cheap way to instantly detect if process killed
 			if !tr.pr.Active() {
 				return nil
 			}
@@ -107,7 +104,7 @@ func (tr *ProcessTracker) loop(ticker *time.Ticker) error {
 
 func (tr *ProcessTracker) CloseWithProcess() error {
 	if !tr.Close() {
-		return ErrTrackerClosed
+		return e.ErrClosed
 	}
 	if err := tr.pr.Close(); err != nil {
 		return fmt.Errorf("close process: %w", err)

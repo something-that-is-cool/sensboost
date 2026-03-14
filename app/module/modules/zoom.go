@@ -5,12 +5,13 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 var zoomSig = modulesutil.SignatureSettings{
-	Signature: []byte{0xF3, 0x0F, 0x10, 0x89, 0x94, 0x00, 0x00, 0x00, 0x0F, 0x2F},
-	Patch:     []byte{0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x0F, 0x2F},
+	Signature: mem.MustParseSignature("F3 0F 10 89 94 00 00 00 0F 2F"),
+	Patch:     mem.MustParseSignature("90 90 90 90 90 90 90 90 0F 2F"),
 }
 
 var _ module.Config = (*Zoom)(nil)
@@ -35,7 +36,7 @@ func (conf *Zoom) Create(p module.Property) (module.Module, error) {
 		return nil, fmt.Errorf("create byte toggler module: %w", err)
 	}
 	m := &zoom{ToggleableModule: b}
-	_ = m.UpdateState(p.Enabled)
+	m.Edit(p)
 	return m, nil
 }
 
