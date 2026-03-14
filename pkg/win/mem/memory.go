@@ -35,9 +35,9 @@ func WriteNop(proc *win.Process, addr uintptr, size uint) error {
 	return Patch(proc, addr, NopBytes(int(size)))
 }
 
-func ReadMemory[T any](p *win.Process, addr uintptr, protect ...bool) (val T, err error) {
+func ReadMemory[T any](p *win.Process, addr uintptr, opts ...any) (val T, err error) {
 	size := unsafe.Sizeof(val)
-	if hasTrueOption(protect) {
+	if _, protect := handleOptions(opts); protect {
 		oldProtect, err := virtualProtectUnlock(p, addr, size)
 		if err != nil {
 			return val, fmt.Errorf("virtual protect (unlock): %w", err)
@@ -54,11 +54,11 @@ func ReadMemory[T any](p *win.Process, addr uintptr, protect ...bool) (val T, er
 	return val, err
 }
 
-func ReadBytes(p *win.Process, addr uintptr, size uint, protect ...bool) ([]byte, error) {
+func ReadBytes(p *win.Process, addr uintptr, size uint, opts ...any) ([]byte, error) {
 	if size == 0 {
 		return nil, errors.New("zero size")
 	}
-	if hasTrueOption(protect) {
+	if _, protect := handleOptions(opts); protect {
 		oldProtect, err := virtualProtectUnlock(p, addr, uintptr(size))
 		if err != nil {
 			return nil, fmt.Errorf("virtual protect (unlock): %w", err)
@@ -77,32 +77,34 @@ func ReadBytes(p *win.Process, addr uintptr, size uint, protect ...bool) ([]byte
 	return buf, nil
 }
 
-func ResolvePointerValue[T any](proc *win.Process, baseAddr uintptr, offsets []uintptr, protectRead ...bool) (T, uintptr, error) {
+func ResolvePointerValue[T any](proc *win.Process, baseAddr uintptr, offsets []uintptr, opts ...any) (T, uintptr, error) {
 	var zero T
-	finalAddr, err := ResolvePointerAddress(proc, baseAddr, offsets, protectRead...)
+	finalAddr, err := ResolvePointerAddress(proc, baseAddr, offsets, opts...)
 	if err != nil {
 		return zero, 0, fmt.Errorf("resolve pointer address: %w", err)
 	}
-	val, err := ReadMemory[T](proc, finalAddr, protectRead...)
+	val, err := ReadMemory[T](proc, finalAddr, opts...)
 	if err != nil {
 		return zero, 0, fmt.Errorf("read final value: %w", err)
 	}
 	return val, finalAddr, nil
 }
 
-//todo: options (subtract module, protect read)
-
-func ResolvePointerAddress(proc *win.Process, baseAddr uintptr, offsets []uintptr, protectRead ...bool) (uintptr, error) {
+func ResolvePointerAddress(proc *win.Process, baseAddr uintptr, offsets []uintptr, opts ...any) (uintptr, error) {
 	mod, _, err := proc.GetModuleInfo()
 	if err != nil {
 		return 0, fmt.Errorf("get proc module info: %w", err)
 	}
-	addr, err := ReadMemory[uintptr](proc, mod+baseAddr, protectRead...)
+	finalAddr := baseAddr
+	if subModule, _ := handleOptions(opts); !subModule {
+		finalAddr += mod
+	}
+	addr, err := ReadMemory[uintptr](proc, mod+baseAddr, opts...)
 	if err != nil {
 		return 0, fmt.Errorf("read base addr: %w", err)
 	}
 	for i := 0; i < len(offsets)-1; i++ {
-		addr, err = ReadMemory[uintptr](proc, addr+offsets[i], protectRead...)
+		addr, err = ReadMemory[uintptr](proc, addr+offsets[i], opts...)
 		if err != nil {
 			return 0, fmt.Errorf("read offset at step %d: %w", i, err)
 		}
@@ -182,13 +184,4 @@ func virtualProtectUnlock(proc *win.Process, addr, size uintptr) (p uint32, err 
 func virtualProtectLock(proc *win.Process, addr, size uintptr, p uint32) {
 	var temp uint32
 	_ = w.VirtualProtectEx(proc.Handle, addr, size, p, &temp)
-}
-
-func hasTrueOption(opts []bool) bool {
-	for _, opt := range opts {
-		if opt {
-			return true
-		}
-	}
-	return false
 }
