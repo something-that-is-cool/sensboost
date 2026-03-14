@@ -6,7 +6,8 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 var (
@@ -15,7 +16,7 @@ var (
 		Offsets:     []uintptr{0x10, 0x58, 0x58, 0xD8, 0x0, 0x38, 0x194},
 	}
 	disableTimeSig = modulesutil.SignatureSettings{
-		Signature: []byte{0x41, 0x89, 0x89, 0x94, 0x01, 0x00, 0x00},
+		Signature: mem.MustParseSignature("41 89 89 94 01 00 00"),
 	}
 )
 

@@ -11,7 +11,8 @@ import (
 	"fyne.io/fyne/v2"
 	fyneapp "fyne.io/fyne/v2/app"
 	"github.com/something-that-is-cool/zutil/internal/misc"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/hotkey"
 )
 
 const (
@@ -28,7 +29,7 @@ type App struct {
 	wg sync.WaitGroup
 
 	tr *win.ProcessTracker
-	hm *win.HotkeyManager
+	hm *hotkey.Manager
 
 	closed atomic.Bool
 
@@ -76,7 +77,7 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 
 	// create hotkey manager after modules initialized !!!!!
 	app.userConf.Lock()
-	app.hm = win.HotkeyManagerConfig{Handlers: app.loadBinds(app.userConf.V)}.New()
+	app.hm = hotkey.ManagerConfig{Handlers: app.loadBinds(app.userConf.V)}.New()
 	app.userConf.Unlock()
 
 	c, err := app.createContent(modules, w)

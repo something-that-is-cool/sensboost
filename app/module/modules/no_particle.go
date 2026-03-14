@@ -5,11 +5,12 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 var noParticleSig = modulesutil.SignatureSettings{
-	Signature: []byte{0xE8, 0x68, 0x4F, 0xCF, 0xFF},
+	Signature: mem.MustParseSignature("E8 68 4F CF FF"),
 }
 
 var _ module.Config = (*NoParticle)(nil)
@@ -33,7 +34,7 @@ func (conf *NoParticle) Create(p module.Property) (module.Module, error) {
 		return nil, fmt.Errorf("create sig toggle module: %w", err)
 	}
 	n := &noParticle{ToggleableModule: s}
-	_ = n.UpdateState(p.Enabled)
+	n.Edit(p)
 	return n, nil
 }
 

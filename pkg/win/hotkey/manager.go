@@ -1,4 +1,4 @@
-package win
+package hotkey
 
 import (
 	"context"
@@ -9,23 +9,25 @@ import (
 	"github.com/something-that-is-cool/zutil/internal/misc"
 )
 
-type HotkeyManagerConfig struct {
+//fixme: gohook causes cpu spikes
+
+type ManagerConfig struct {
 	Handlers map[string]func()
 }
 
 // New ...
-func (conf HotkeyManagerConfig) New() *HotkeyManager {
+func (conf ManagerConfig) New() *Manager {
 	if conf.Handlers == nil {
 		conf.Handlers = make(map[string]func())
 	}
-	m := &HotkeyManager{Events: misc.ValueWithRWMutex[map[string]func()]{V: make(map[string]func())}}
+	m := &Manager{Events: misc.ValueWithRWMutex[map[string]func()]{V: make(map[string]func())}}
 	for k, h := range conf.Handlers {
 		m.Events.V[k] = h
 	}
 	return m
 }
 
-type HotkeyManager struct {
+type Manager struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -35,8 +37,10 @@ type HotkeyManager struct {
 	Events misc.ValueWithRWMutex[map[string]func()]
 }
 
+var ErrAlreadyRunning = errors.New("already running")
+
 // Run ...
-func (m *HotkeyManager) Run(ctx context.Context) error {
+func (m *Manager) Run(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -54,7 +58,7 @@ func (m *HotkeyManager) Run(ctx context.Context) error {
 	return nil
 }
 
-func (m *HotkeyManager) initIfStarted(ctx context.Context) bool {
+func (m *Manager) initIfStarted(ctx context.Context) bool {
 	m.running.Lock()
 	defer m.running.Unlock()
 
@@ -68,7 +72,7 @@ func (m *HotkeyManager) initIfStarted(ctx context.Context) bool {
 	return true
 }
 
-func (m *HotkeyManager) Handle(key string, fn func()) {
+func (m *Manager) Handle(key string, fn func()) {
 	if key == "" || fn == nil {
 		return
 	}
@@ -77,11 +81,11 @@ func (m *HotkeyManager) Handle(key string, fn func()) {
 	m.HandleUnsafe(key, fn)
 }
 
-func (m *HotkeyManager) HandleUnsafe(key string, fn func()) {
+func (m *Manager) HandleUnsafe(key string, fn func()) {
 	m.Events.V[key] = fn
 }
 
-func (m *HotkeyManager) DeleteHandler(key string) {
+func (m *Manager) DeleteHandler(key string) {
 	if key == "" {
 		return
 	}
@@ -90,23 +94,23 @@ func (m *HotkeyManager) DeleteHandler(key string) {
 	m.DeleteHandlerUnsafe(key)
 }
 
-func (m *HotkeyManager) DeleteHandlerUnsafe(key string) {
+func (m *Manager) DeleteHandlerUnsafe(key string) {
 	delete(m.Events.V, key)
 }
 
-func (m *HotkeyManager) ClearHandlers() {
+func (m *Manager) ClearHandlers() {
 	m.Events.Lock()
 	defer m.Events.Unlock()
 	m.ClearHandlersUnsafe()
 }
 
-func (m *HotkeyManager) ClearHandlersUnsafe() {
+func (m *Manager) ClearHandlersUnsafe() {
 	clear(m.Events.V)
 }
 
 var ErrAlreadyClosed = errors.New("already closed")
 
-func (m *HotkeyManager) Close() error {
+func (m *Manager) Close() error {
 	if !m.closed.CompareAndSwap(false, true) {
 		return ErrAlreadyClosed
 	}
@@ -120,7 +124,7 @@ func (m *HotkeyManager) Close() error {
 	return nil
 }
 
-func (m *HotkeyManager) handleEvent(ev hook.Event) {
+func (m *Manager) handleEvent(ev hook.Event) {
 	s, ok := KeycodeToChar[ev.Keycode]
 	if !ok {
 		return

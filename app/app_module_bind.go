@@ -7,8 +7,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win/cursor"
+	"github.com/something-that-is-cool/zutil/pkg/win/cursor"
+	"github.com/something-that-is-cool/zutil/pkg/win/hotkey"
 )
 
 func (app *App) bindButton(w fyne.Window, m module.Module, c module.Config) func() {
@@ -29,7 +29,7 @@ func (app *App) bindButton(w fyne.Window, m module.Module, c module.Config) func
 }
 
 func (app *App) createBindButtons(m module.Module, c module.Config, d *dialog.Dialog) (b []fyne.CanvasObject) {
-	for _, char := range win.AllChars {
+	for _, char := range hotkey.AllChars {
 		b = append(b, widget.NewButton(char, func() {
 			app.bindModuleTo(m, c, char)()
 			(*d).Dismiss()

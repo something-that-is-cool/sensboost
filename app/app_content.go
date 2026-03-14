@@ -9,7 +9,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
-	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
+	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 )
 
 func (app *App) createContent(modules *modulesMap, w fyne.Window) (fyne.CanvasObject, error) {

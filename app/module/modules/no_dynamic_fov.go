@@ -5,11 +5,12 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 var noDynamicFovSig = modulesutil.SignatureSettings{
-	Signature: []byte{0xF3, 0x0F, 0x11, 0x83, 0x78, 0x12, 0x00, 0x00},
+	Signature: mem.MustParseSignature("F3 0F 11 83 78 12 00 00"),
 }
 
 var _ module.Config = (*NoDynamicFov)(nil)
@@ -33,7 +34,7 @@ func (conf *NoDynamicFov) Create(p module.Property) (module.Module, error) {
 		return nil, fmt.Errorf("create sig toggle module: %w", err)
 	}
 	n := &noDynamicFov{ToggleableModule: t}
-	_ = n.UpdateState(p.Enabled)
+	n.Edit(p)
 	return n, nil
 }
 

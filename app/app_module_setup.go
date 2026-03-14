@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
 )
 
 func (app *App) setupModules(proc *win.Process) []module.Config {

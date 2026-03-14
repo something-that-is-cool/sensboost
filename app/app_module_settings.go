@@ -8,7 +8,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
+	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 )
 
 func (app *App) createModuleSettingsObject(m module.Module, c module.Config, w fyne.Window) fyne.CanvasObject {

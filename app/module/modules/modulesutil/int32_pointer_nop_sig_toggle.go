@@ -7,8 +7,10 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem/memutil"
 )
 
 type Int32PointerNopSigToggle struct {
@@ -31,11 +33,7 @@ type Int32PointerNopSigToggle struct {
 }
 
 // New ...
-func (conf Int32PointerNopSigToggle) New() (ToggleableModuleWithValue[int32], error) {
-	mod, size, err := conf.Process.GetModuleInfo()
-	if err != nil {
-		return nil, fmt.Errorf("get process module: %w", err)
-	}
+func (conf Int32PointerNopSigToggle) New() (_ ToggleableModuleWithValue[int32], err error) {
 	i := &int32PointerNopSigToggle{
 		p:    conf.Ptr,
 		s:    conf.Sig,
@@ -46,9 +44,7 @@ func (conf Int32PointerNopSigToggle) New() (ToggleableModuleWithValue[int32], er
 		addr:    conf.FinalAddr,
 		resolve: conf.ResolveAddress,
 	}
-	togglerConf := win.SignatureNopTogglerConfig{
-		Module:    mod,
-		Size:      size,
+	togglerConf := memutil.SignatureNopTogglerConfig{
 		Process:   conf.Process,
 		Signature: conf.Sig.Signature,
 		NopSig:    conf.Sig.Patch,
@@ -97,7 +93,7 @@ type int32PointerNopSigToggle struct {
 	input  *widget.Entry
 	check  *widget.Check
 
-	toggler *win.SignatureNopToggler
+	toggler *memutil.SignatureNopToggler
 
 	addr    uintptr
 	resolve func() (uintptr, error)
@@ -143,7 +139,7 @@ func (i *int32PointerNopSigToggle) writeValue(v int32) {
 		i.err(fmt.Errorf("lazy get (resolve) ptr address: %w", err))
 		return
 	}
-	err = win.WriteMemory[int32](i.proc, addr, v)
+	err = mem.WriteMemory[int32](i.proc, addr, v)
 	if err != nil {
 		i.err(fmt.Errorf("write to pointer %d: %w", v, err))
 	}
@@ -170,9 +166,5 @@ func (i *int32PointerNopSigToggle) lazyAddress() (uintptr, error) {
 }
 
 func (i *int32PointerNopSigToggle) resolveAddress() (uintptr, error) {
-	mod, _, err := i.proc.GetModuleInfo()
-	if err != nil {
-		return 0, fmt.Errorf("get process module: %w", err)
-	}
-	return win.ResolvePointerAddress(i.proc, mod, i.p.BaseAddress, i.p.Offsets)
+	return mem.ResolvePointerAddress(i.proc, i.p.BaseAddress, i.p.Offsets)
 }

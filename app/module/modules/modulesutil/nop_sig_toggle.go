@@ -5,12 +5,12 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
-	"github.com/something-that-is-cool/zutil/internal/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem/memutil"
 )
 
 type SigToggleModule struct {
 	Sig      SignatureSettings
-	Offset   uintptr
 	Process  *win.Process
 	Error    func(error)
 	OnToggle func(bool)
@@ -31,7 +31,9 @@ func (conf SigToggleModule) New() (ToggleableModule, error) {
 		if err = toggler.Set(b); err != nil {
 			return fmt.Errorf("update sig toggler state: %w", err)
 		}
-		conf.OnToggle(b)
+		if conf.OnToggle != nil {
+			conf.OnToggle(b)
+		}
 		return nil
 	})
 	return s, nil
@@ -47,42 +49,41 @@ type sigToggleModule struct {
 
 	check *widget.Check
 
-	t *win.SignatureNopToggler
+	t *memutil.SignatureNopToggler
 }
 
-// CreateObjects ...
 func (m *sigToggleModule) CreateObjects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{m.check}
 }
 
-// UpdateState ...
 func (m *sigToggleModule) UpdateState(b bool) error {
 	m.check.SetChecked(b)
 	return nil
 }
 
-// State ...
 func (m *sigToggleModule) State() bool {
+	if m.t == nil {
+		return false
+	}
 	return m.t.Enabled()
 }
 
-func (m *sigToggleModule) lazyToggler() (*win.SignatureNopToggler, error) {
+func (m *sigToggleModule) lazyToggler() (*memutil.SignatureNopToggler, error) {
 	if m.t != nil {
 		return m.t, nil
 	}
-	conf := win.SignatureNopTogglerConfig{
+	conf := memutil.SignatureNopTogglerConfig{
 		Process:   m.proc,
-		Module:    m.proc.Module,
-		Size:      m.proc.ModuleSize,
 		Signature: m.sig.Signature,
-		NopSig:    m.lazyPatch(),
 	}
 	t, err := conf.New()
 	if err != nil {
 		return nil, fmt.Errorf("init toggler: %w", err)
 	}
 	m.t = t
-	//_ = m.toggler.Set(m.toggler.Enabled())
+	if t.Enabled() {
+		_ = m.UpdateState(true)
+	}
 	return t, nil
 }
 
@@ -94,12 +95,5 @@ func (m *sigToggleModule) Disable() {
 	if err != nil {
 		m.err(fmt.Errorf("disable (set false): %w", err))
 	}
-}
-
-func (m *sigToggleModule) lazyPatch() []byte {
-	if m.sig.Patch != nil {
-		return m.sig.Patch
-	}
-	m.sig.Patch = win.NopSig(len(m.sig.Signature))
-	return m.sig.Patch
+	_ = m.UpdateState(false)
 }

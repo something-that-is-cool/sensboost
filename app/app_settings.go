@@ -12,8 +12,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/misc"
-	"github.com/something-that-is-cool/zutil/internal/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/internal/version"
+	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 )
 
 var aboutMessage = misc.JoinNewLine(
