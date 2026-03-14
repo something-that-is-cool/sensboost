@@ -99,7 +99,7 @@ func ResolvePointerAddress(proc *win.Process, baseAddr uintptr, offsets []uintpt
 	if subModule, _ := handleOptions(opts); !subModule {
 		finalAddr += mod
 	}
-	addr, err := ReadMemory[uintptr](proc, mod+baseAddr, opts...)
+	addr, err := ReadMemory[uintptr](proc, finalAddr, opts...)
 	if err != nil {
 		return 0, fmt.Errorf("read base addr: %w", err)
 	}
