@@ -2,11 +2,11 @@ package hotkey
 
 import (
 	"context"
-	"errors"
 	"sync/atomic"
 
 	hook "github.com/robotn/gohook"
 	"github.com/something-that-is-cool/zutil/internal/misc"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 )
 
 //fixme: gohook causes cpu spikes
@@ -37,8 +37,6 @@ type Manager struct {
 	Events misc.ValueWithRWMutex[map[string]func()]
 }
 
-var ErrAlreadyRunning = errors.New("already running")
-
 // Run ...
 func (m *Manager) Run(ctx context.Context) error {
 	select {
@@ -47,7 +45,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	default:
 	}
 	if !m.initIfStarted(ctx) {
-		return ErrAlreadyRunning
+		return e.ErrAlreadyRunning
 	}
 	defer m.cancel()
 	select {
@@ -108,11 +106,9 @@ func (m *Manager) ClearHandlersUnsafe() {
 	clear(m.Events.V)
 }
 
-var ErrAlreadyClosed = errors.New("already closed")
-
 func (m *Manager) Close() error {
 	if !m.closed.CompareAndSwap(false, true) {
-		return ErrAlreadyClosed
+		return e.ErrAlreadyClosed
 	}
 	m.running.Lock()
 	defer m.running.Unlock()

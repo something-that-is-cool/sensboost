@@ -2,6 +2,7 @@ package modulesutil
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
@@ -23,16 +24,16 @@ func (conf SigToggleModule) New() (ToggleableModule, error) {
 		err:  conf.Error,
 	}
 	s.check = &widget.Check{Text: ToggleDisabled}
-	s.check.OnChanged = CheckSet(conf.Error, s.check, func(b bool, check *widget.Check) error {
+	s.check.OnChanged = CheckSet(conf.Error, s.check, func(v bool, _ *widget.Check) error {
 		toggler, err := s.lazyToggler()
 		if err != nil {
 			return fmt.Errorf("get sig toggler: %w", err)
 		}
-		if err = toggler.Set(b); err != nil {
+		if err = toggler.Set(v); err != nil {
 			return fmt.Errorf("update sig toggler state: %w", err)
 		}
 		if conf.OnToggle != nil {
-			conf.OnToggle(b)
+			conf.OnToggle(v)
 		}
 		return nil
 	})
@@ -49,28 +50,32 @@ type sigToggleModule struct {
 
 	check *widget.Check
 
-	t *memutil.SignatureNopToggler
+	t atomic.Pointer[memutil.SignatureNopToggler]
 }
 
 func (m *sigToggleModule) CreateObjects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{m.check}
 }
 
-func (m *sigToggleModule) UpdateState(b bool) error {
-	m.check.SetChecked(b)
+func (m *sigToggleModule) UpdateState(v bool) error {
+	if m.check.Checked == v {
+		return fmt.Errorf("state is already %t", v)
+	}
+	m.check.SetChecked(v)
 	return nil
 }
 
 func (m *sigToggleModule) State() bool {
-	if m.t == nil {
+	t := m.t.Load()
+	if t == nil {
 		return false
 	}
-	return m.t.Enabled()
+	return t.Enabled()
 }
 
 func (m *sigToggleModule) lazyToggler() (*memutil.SignatureNopToggler, error) {
-	if m.t != nil {
-		return m.t, nil
+	if t := m.t.Load(); t != nil {
+		return t, nil
 	}
 	conf := memutil.SignatureNopTogglerConfig{
 		Process:   m.proc,
@@ -80,20 +85,17 @@ func (m *sigToggleModule) lazyToggler() (*memutil.SignatureNopToggler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("init toggler: %w", err)
 	}
-	m.t = t
-	if t.Enabled() {
+	if t.Enabled() && !m.check.Checked {
 		_ = m.UpdateState(true)
 	}
+	m.t.Store(t)
 	return t, nil
 }
 
 func (m *sigToggleModule) Disable() {
-	if m.t == nil || !m.t.Enabled() {
+	t := m.t.Load()
+	if t == nil || !t.Enabled() {
 		return
-	}
-	err := m.t.Set(false)
-	if err != nil {
-		m.err(fmt.Errorf("disable (set false): %w", err))
 	}
 	_ = m.UpdateState(false)
 }

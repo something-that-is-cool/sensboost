@@ -26,16 +26,16 @@ func (conf ByteToggleModule) New() (ToggleableModule, error) {
 		err:  conf.Error,
 	}
 	m.check = &widget.Check{Text: ToggleDisabled}
-	m.check.OnChanged = CheckSet(conf.Error, m.check, func(b bool, check *widget.Check) error {
+	m.check.OnChanged = CheckSet(conf.Error, m.check, func(v bool, _ *widget.Check) error {
 		toggler, err := m.lazyToggler()
 		if err != nil {
 			return fmt.Errorf("get byte toggler: %w", err)
 		}
-		if err = toggler.Set(b); err != nil {
+		if err = toggler.Set(v); err != nil {
 			return fmt.Errorf("update byte toggler state: %w", err)
 		}
 		if conf.OnToggle != nil {
-			conf.OnToggle(b)
+			conf.OnToggle(v)
 		}
 		return nil
 	})
@@ -55,8 +55,11 @@ type byteToggleModule struct {
 	check *widget.Check
 }
 
-func (m *byteToggleModule) UpdateState(b bool) error {
-	m.check.SetChecked(b)
+func (m *byteToggleModule) UpdateState(v bool) error {
+	if m.check.Checked == v {
+		return fmt.Errorf("state is already %t", v)
+	}
+	m.check.SetChecked(v)
 	return nil
 }
 

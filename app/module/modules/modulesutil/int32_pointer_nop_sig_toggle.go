@@ -47,21 +47,21 @@ func (conf Int32PointerNopSigToggle) New() (_ ToggleableModuleWithValue[int32], 
 	togglerConf := memutil.SignatureNopTogglerConfig{
 		Process:   conf.Process,
 		Signature: conf.Sig.Signature,
-		NopSig:    conf.Sig.Patch,
+		Patch:     conf.Sig.Patch,
 	}
 	i.toggler, err = togglerConf.New()
 	if err != nil {
 		return nil, fmt.Errorf("create nop sig toggler: %w", err)
 	}
 	i.check = &widget.Check{Text: ToggleDisabled}
-	i.check.OnChanged = CheckSet(conf.Error, i.check, func(b bool, _ *widget.Check) error {
-		if err := i.toggler.Set(b); err != nil {
+	i.check.OnChanged = CheckSet(conf.Error, i.check, func(v bool, _ *widget.Check) error {
+		if err := i.toggler.Set(v); err != nil {
 			return fmt.Errorf("set toggler: %w", err)
 		}
 		// force writing value
 		i.writeValue(int32(i.slider.Value))
 		// and calling the handler
-		conf.OnStateChanged(b)
+		conf.OnStateChanged(v)
 		return nil
 	})
 	i.slider, i.input = fyneutil.SliderWithTrackedInput{
@@ -107,6 +107,9 @@ func (i *int32PointerNopSigToggle) CreateObjects() []fyne.CanvasObject {
 
 // SetValue ...
 func (i *int32PointerNopSigToggle) SetValue(v int32) error {
+	if int32(i.slider.Value) == v {
+		return fmt.Errorf("value is already %d", v)
+	}
 	i.slider.SetValue(float64(v))
 	return nil
 }
@@ -118,8 +121,11 @@ func (i *int32PointerNopSigToggle) Value() (int32, bool) {
 }
 
 // UpdateState ...
-func (i *int32PointerNopSigToggle) UpdateState(b bool) error {
-	i.check.SetChecked(b)
+func (i *int32PointerNopSigToggle) UpdateState(v bool) error {
+	if i.check.Checked == v {
+		return fmt.Errorf("state is already %t", v)
+	}
+	i.check.SetChecked(v)
 	return nil
 }
 
@@ -141,6 +147,7 @@ func (i *int32PointerNopSigToggle) writeValue(v int32) {
 	}
 	err = mem.WriteMemory[int32](i.proc, addr, v)
 	if err != nil {
+		i.addr = 0 //force recalculate address
 		i.err(fmt.Errorf("write to pointer %d: %w", v, err))
 	}
 }

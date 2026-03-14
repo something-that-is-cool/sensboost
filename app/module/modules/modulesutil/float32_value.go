@@ -103,6 +103,9 @@ func (m *float32Module) CreateObjects() []fyne.CanvasObject {
 
 // SetValue ...
 func (m *float32Module) SetValue(v float64) error {
+	if mgl64.FloatEqual(m.slider.Value, v) {
+		return fmt.Errorf("value is already %.3f", v)
+	}
 	m.slider.SetValue(v)
 	return nil
 }
@@ -137,6 +140,7 @@ func (m *float32Module) write(val float64) error {
 	}
 	toWrite := m.sToM(val)
 	if err = mem.WriteMemory[float32](m.proc, addr, toWrite); err != nil {
+		m.a = 0 //force recalculate address
 		return fmt.Errorf("write memory: %w", err)
 	}
 	m.val.V.v = val
@@ -160,6 +164,7 @@ func (m *float32Module) initialRead() (float64, error) {
 	}
 	v, err := mem.ReadMemory[float32](m.proc, addr)
 	if err != nil {
+		m.a = 0 //force recalculate address
 		return 0, fmt.Errorf("read memory: %w", err)
 	}
 	// don't forget to normalize value

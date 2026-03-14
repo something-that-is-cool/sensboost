@@ -26,19 +26,22 @@ var aboutMessage = misc.JoinNewLine(
 )
 
 func (app *App) createSettingsObject() fyne.CanvasObject {
-	settings := &widget.Button{Icon: theme.SettingsIcon(), OnTapped: func() {
-		app.showSettings()
-	}}
+	settings := &widget.Button{
+		Icon:     theme.SettingsIcon(),
+		OnTapped: app.showSettings,
+	}
 	about := &widget.Button{Icon: theme.InfoIcon(), OnTapped: func() {
-		app.showInfo("About", aboutMessage, true)
+		app.showInfo("About", aboutMessage)
 	}}
 	toggleTheme := &widget.Button{Icon: theme.VisibilityIcon(), OnTapped: func() {
 		app.userConf.Lock()
 		defer app.userConf.Unlock()
+
 		app.userConf.V.LightTheme = !app.userConf.V.LightTheme
-		app.syncThemeUnsafe(app.userConf.V)
+		app.syncTheme(app.userConf.V)
 	}}
-	return fyneutil.LeftAndRight(fyneutil.LeftAndRight(toggleTheme, settings), about)
+	buttons := fyneutil.LeftAndRight(toggleTheme, settings)
+	return fyneutil.LeftAndRight(buttons, about)
 }
 
 func (app *App) showSettings() {
@@ -50,17 +53,13 @@ func (app *App) showSettings() {
 	app.data.Lock()
 	defer app.data.Unlock()
 
-	dialog.ShowCustom("Settings", "Close", content, app.data.V.win)
+	dialog.ShowCustom("Settings", "Close", content, app.win)
 }
 
 func (app *App) importConfig() {
-	app.data.Lock()
-	win := app.data.V.win
-	app.data.Unlock()
-
 	dialog.ShowFileOpen(func(reader fyne.URIReadCloser, err error) {
 		if err != nil {
-			dialog.ShowError(fmt.Errorf("import: %w", err), win)
+			app.showError(fmt.Errorf("import: %w", err))
 			return
 		}
 		if reader == nil {
@@ -69,14 +68,14 @@ func (app *App) importConfig() {
 		}
 		defer reader.Close() //nolint:errcheck
 		if err = app.doImport(reader); err != nil {
-			dialog.ShowError(fmt.Errorf("import: %w", err), win)
+			app.showError(fmt.Errorf("import: %w", err))
 			return
 		}
-		dialog.ShowInformation("Import", misc.JoinNewLine(
+		app.showInfo("Import", misc.JoinNewLine(
 			"successfully imported config.",
 			reader.URI().Path(),
-		), win)
-	}, win)
+		))
+	}, app.win)
 }
 
 func (app *App) doImport(reader fyne.URIReadCloser) error {
@@ -94,13 +93,9 @@ func (app *App) doImport(reader fyne.URIReadCloser) error {
 }
 
 func (app *App) exportConfig() {
-	app.data.Lock()
-	win := app.data.V.win
-	app.data.Unlock()
-
 	dialog.ShowFileSave(func(writer fyne.URIWriteCloser, err error) {
 		if err != nil {
-			dialog.ShowError(fmt.Errorf("export: %w", err), win)
+			app.showError(fmt.Errorf("export: %w", err))
 			return
 		}
 		if writer == nil {
@@ -109,14 +104,14 @@ func (app *App) exportConfig() {
 		}
 		defer writer.Close() //nolint:errcheck
 		if err = app.doExport(writer); err != nil {
-			dialog.ShowError(fmt.Errorf("export: %w", err), win)
+			app.showError(fmt.Errorf("export: %w", err))
 			return
 		}
-		dialog.ShowInformation("Export config", misc.JoinNewLine(
+		app.showInfo("Export config", misc.JoinNewLine(
 			"successfully exported config.",
 			writer.URI().Path(),
-		), win)
-	}, win)
+		))
+	}, app.win)
 }
 
 func (app *App) doExport(writer fyne.URIWriteCloser) error {
@@ -145,7 +140,7 @@ func (app *App) applyConfig(newConf *UserConfig) map[module.Module]module.Proper
 	// uConf must not be nil here
 	app.userConf.V = newConf
 	// sync theme
-	app.syncThemeUnsafe(app.userConf.V)
+	app.syncTheme(app.userConf.V)
 
 	app.data.Lock()
 	defer app.data.Unlock()

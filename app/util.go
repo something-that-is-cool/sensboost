@@ -6,28 +6,25 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"github.com/something-that-is-cool/zutil/app/module"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 )
 
-func (app *App) syncThemeUnsafe(conf *UserConfig) {
+func (app *App) syncTheme(conf *UserConfig) {
 	variant := theme.VariantDark
 	if conf.LightTheme {
 		variant = theme.VariantLight
 	}
-	settings := app.data.V.app.Settings()
+	settings := app.app.Settings()
 	settings.SetTheme(fyneutil.NewVariantTheme(theme.DefaultTheme(), variant))
 }
 
-func (app *App) showInfo(title, msg string, safe bool) {
-	if safe {
-		app.data.Lock()
-		defer app.data.Unlock()
-	}
-	w := app.data.V.win
-	if w == nil {
-		return
-	}
-	dialog.ShowInformation(title, msg, w)
+func (app *App) showInfo(title, msg string) {
+	dialog.ShowInformation(title, msg, app.win)
+}
+
+func (app *App) showError(err error) {
+	dialog.ShowError(err, app.win)
 }
 
 func (app *App) doModuleUpdates(updates map[module.Module]module.Property) {
@@ -45,11 +42,9 @@ func (app *App) moduleByIDUnsafe(id string) (module.Module, bool) {
 	return nil, false
 }
 
-var errAlreadyClosed = errors.New("already closed")
-
 func (app *App) doClose(name string, fn func() error) {
 	app.conf.Logger.Info("closing " + name + "...")
-	if err := fn(); err != nil && !errors.Is(err, errAlreadyClosed) {
+	if err := fn(); err != nil && !errors.Is(err, e.ErrAlreadyClosed) {
 		app.conf.Logger.Warn("cannot close "+name, "err", err.Error())
 		return
 	}

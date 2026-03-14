@@ -28,7 +28,7 @@ func WriteMemory[T any](proc *win.Process, addr uintptr, val T) error {
 		size,
 		nil,
 	)
-	return nil
+	return err
 }
 
 func WriteNop(proc *win.Process, addr uintptr, size uint) error {
@@ -77,30 +77,32 @@ func ReadBytes(p *win.Process, addr uintptr, size uint, protect ...bool) ([]byte
 	return buf, nil
 }
 
-func ResolvePointerValue[T any](proc *win.Process, baseAddr uintptr, offsets []uintptr) (T, uintptr, error) {
+func ResolvePointerValue[T any](proc *win.Process, baseAddr uintptr, offsets []uintptr, protectRead ...bool) (T, uintptr, error) {
 	var zero T
-	finalAddr, err := ResolvePointerAddress(proc, baseAddr, offsets)
+	finalAddr, err := ResolvePointerAddress(proc, baseAddr, offsets, protectRead...)
 	if err != nil {
 		return zero, 0, fmt.Errorf("resolve pointer address: %w", err)
 	}
-	val, err := ReadMemory[T](proc, finalAddr)
+	val, err := ReadMemory[T](proc, finalAddr, protectRead...)
 	if err != nil {
 		return zero, 0, fmt.Errorf("read final value: %w", err)
 	}
 	return val, finalAddr, nil
 }
 
-func ResolvePointerAddress(proc *win.Process, baseAddr uintptr, offsets []uintptr) (uintptr, error) {
+//todo: options (subtract module, protect read)
+
+func ResolvePointerAddress(proc *win.Process, baseAddr uintptr, offsets []uintptr, protectRead ...bool) (uintptr, error) {
 	mod, _, err := proc.GetModuleInfo()
 	if err != nil {
 		return 0, fmt.Errorf("get proc module info: %w", err)
 	}
-	addr, err := ReadMemory[uintptr](proc, mod+baseAddr)
+	addr, err := ReadMemory[uintptr](proc, mod+baseAddr, protectRead...)
 	if err != nil {
 		return 0, fmt.Errorf("read base addr: %w", err)
 	}
 	for i := 0; i < len(offsets)-1; i++ {
-		addr, err = ReadMemory[uintptr](proc, addr+offsets[i])
+		addr, err = ReadMemory[uintptr](proc, addr+offsets[i], protectRead...)
 		if err != nil {
 			return 0, fmt.Errorf("read offset at step %d: %w", i, err)
 		}

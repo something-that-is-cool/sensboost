@@ -20,7 +20,7 @@ type ByteToggler struct {
 
 func (t *ByteToggler) Set(b bool) error {
 	if t.state.Load() == b {
-		return nil
+		return fmt.Errorf("state is already %t", b)
 	}
 	data := t.Original
 	if b {
@@ -43,5 +43,5 @@ func (t *ByteToggler) Enabled() bool {
 }
 
 func (t *ByteToggler) SetState(b bool) {
-	t.state.Store(b)
+	t.state.CompareAndSwap(!b, b)
 }

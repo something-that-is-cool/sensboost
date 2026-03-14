@@ -11,6 +11,10 @@ type Signature struct {
 	Mask string // "xxx??x"
 }
 
+func (sig Signature) Empty() bool {
+	return len(sig.Data) == 0 || sig.Mask == ""
+}
+
 func MustParseSignature(from string) (sig Signature) {
 	for _, part := range strings.Fields(from) {
 		if strings.Contains(part, "?") {

@@ -1,11 +1,11 @@
 package mem
 
 import (
-	"errors"
 	"fmt"
 	"math"
 
 	"github.com/something-that-is-cool/zutil/internal/misc"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 )
 
@@ -30,14 +30,12 @@ func NewDetour(p *win.Process, target, dest uintptr, size uint) *Detour {
 	return d
 }
 
-var ErrDetourAlreadyEnabled = errors.New("already enabled")
-
 func (d *Detour) Enable() (err error) {
 	d.data.Lock()
 	defer d.data.Unlock()
 
 	if err = d.init(); err != nil {
-		return err
+		return fmt.Errorf("init: %w", err)
 	}
 	if err := d.writeCaveCode(); err != nil {
 		return fmt.Errorf("write cave code: %w", err)
@@ -54,7 +52,7 @@ func (d *Detour) EnableWithCode(userCode []byte) (err error) {
 	defer d.data.Unlock()
 
 	if err = d.init(); err != nil {
-		return err
+		return fmt.Errorf("init: %w", err)
 	}
 	finalPayload := append([]byte(nil), userCode...)
 	finalPayload = append(finalPayload, d.data.V.origBytes...)
@@ -74,7 +72,7 @@ func (d *Detour) EnableWithCode(userCode []byte) (err error) {
 
 func (d *Detour) init() (err error) {
 	if d.data.V.init {
-		return ErrDetourAlreadyEnabled
+		return e.ErrAlreadyInitialized
 	}
 	d.data.V.origBytes, err = ReadBytes(d.proc, d.data.V.target, d.data.V.size)
 	if err != nil {

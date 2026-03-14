@@ -11,26 +11,30 @@ import (
 type SignatureNopTogglerConfig struct {
 	Process   *win.Process
 	Signature mem.Signature
-	NopSig    mem.Signature
+	Patch     mem.Signature
 }
 
 func (conf SignatureNopTogglerConfig) New() (*SignatureNopToggler, error) {
 	t := &SignatureNopToggler{
 		pr:  conf.Process,
 		sig: conf.Signature,
-		nop: conf.NopSig,
+		nop: conf.Patch,
 	}
 	addr, isPatched, err := t.scanAddress()
 	if err != nil {
 		return nil, fmt.Errorf("initial sig scan: %w", err)
 	}
+	patch := mem.NopBytes(len(t.sig.Data))
+	if len(conf.Patch.Data) > 0 {
+		patch = conf.Patch.Data
+	}
 	t.ByteToggler = ByteToggler{
 		Process:  conf.Process,
 		Address:  addr,
 		Original: t.sig.Data,
-		Patch:    mem.NopBytes(len(t.sig.Data)),
+		Patch:    patch,
 	}
-	t.ByteToggler.SetState(isPatched)
+	t.SetState(isPatched)
 	return t, nil
 }
 
@@ -39,10 +43,6 @@ type SignatureNopToggler struct {
 
 	pr       *win.Process
 	sig, nop mem.Signature
-}
-
-func (t *SignatureNopToggler) Toggle() error {
-	return t.ByteToggler.Set(!t.ByteToggler.Enabled())
 }
 
 func (t *SignatureNopToggler) scanAddress() (addr uintptr, patched bool, err error) {

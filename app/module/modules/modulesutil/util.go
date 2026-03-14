@@ -1,6 +1,8 @@
 package modulesutil
 
 import (
+	"fmt"
+
 	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
 )
@@ -13,7 +15,7 @@ const (
 func CheckSet(onError func(error), check *widget.Check, act func(bool, *widget.Check) error) func(bool) {
 	return func(b bool) {
 		if err := act(b, check); err != nil {
-			onError(err)
+			onError(fmt.Errorf("do action: %w", err))
 			return
 		}
 		if b {

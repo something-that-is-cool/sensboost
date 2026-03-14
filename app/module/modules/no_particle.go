@@ -61,5 +61,5 @@ func (*noParticle) Description() string {
 
 // Edit ...
 func (n *noParticle) Edit(p module.Property) {
-	_ = n.UpdateState(p.Enabled) //fixme handle error
+	_ = n.UpdateState(p.Enabled) //todo: handle error
 }
