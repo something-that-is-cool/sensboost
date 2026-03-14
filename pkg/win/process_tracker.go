@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/e"
@@ -17,11 +16,16 @@ type ProcessTrackerConfig struct {
 	Process       *Process
 }
 
-func (conf ProcessTrackerConfig) New() (*ProcessTracker, error) {
+func (conf ProcessTrackerConfig) New() (tr *ProcessTracker, err error) {
 	if conf.Process == nil {
 		return nil, errors.New("nil process")
 	}
-	return &ProcessTracker{pr: conf.Process, handlers: conf.CloseHandlers}, nil
+	tr = &ProcessTracker{pr: conf.Process, handlers: conf.CloseHandlers}
+	tr.stop, err = w.CreateEvent(nil, 1, 0, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create stop event: %w", err)
+	}
+	return tr, nil
 }
 
 type ProcessTracker struct {
@@ -34,6 +38,8 @@ type ProcessTracker struct {
 
 	closed  atomic.Bool
 	running misc.ValueWithMutex[bool]
+
+	stop w.Handle
 }
 
 func (tr *ProcessTracker) Process() *Process {
@@ -75,31 +81,30 @@ func (tr *ProcessTracker) Run(parent context.Context) error {
 	tr.ctx, tr.cancel = context.WithCancel(parent)
 	defer tr.cancel()
 
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
 	tr.running.V = true
 	tr.running.Unlock()
 
-	err := tr.loop(ticker)
-	// call handlers when loop returned
+	err := tr.loop() //blocks
+	// call handlers as soon as loop returned
 	for _, fn := range tr.handlers {
 		fn()
 	}
 	return err
 }
 
-func (tr *ProcessTracker) loop(ticker *time.Ticker) error {
-	for {
-		select {
-		case <-tr.ctx.Done():
-			return tr.ctx.Err()
-		case <-ticker.C: //fixme find a cheap way to instantly detect if process killed
-			if !tr.pr.Active() {
-				return nil
-			}
-		}
+func (tr *ProcessTracker) loop() error {
+	go func() {
+		<-tr.ctx.Done()
+		_ = w.SetEvent(tr.stop)
+	}()
+	idx, err := w.WaitForMultipleObjects([]w.Handle{tr.pr.Handle, tr.stop}, false, w.INFINITE)
+	if err != nil {
+		return err
 	}
+	if idx == w.WAIT_OBJECT_0+1 {
+		return tr.ctx.Err()
+	}
+	return nil
 }
 
 func (tr *ProcessTracker) CloseWithProcess() error {

@@ -36,7 +36,7 @@ func OpenProcess(name string) (*Process, error) {
 	if pid <= 0 {
 		return nil, errors.New("no process by name")
 	}
-	h, err := w.OpenProcess(w.PROCESS_ALL_ACCESS, false, pid)
+	h, err := w.OpenProcess(w.PROCESS_ALL_ACCESS|w.SYNCHRONIZE, false, pid)
 	if err != nil {
 		return nil, err
 	}
