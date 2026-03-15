@@ -27,7 +27,7 @@ func (conf SigToggleModule) New() (ToggleableModule, error) {
 	s.toggler = &fyneutil.Toggler{
 		Handler: s,
 		Action: func(v bool, cause e.ActionCause) error {
-			toggler, err := s.lazyToggler(cause)
+			toggler, err := s.lazyToggler()
 			if err != nil {
 				return fmt.Errorf("get sig toggler: %w", err)
 			}
@@ -80,7 +80,7 @@ func (m *sigToggleModule) State() bool {
 	return t.Enabled()
 }
 
-func (m *sigToggleModule) lazyToggler(cause e.ActionCause) (*memutil.SignatureNopToggler, error) {
+func (m *sigToggleModule) lazyToggler() (*memutil.SignatureNopToggler, error) {
 	if t := m.t.Load(); t != nil {
 		return t, nil
 	}
@@ -91,9 +91,6 @@ func (m *sigToggleModule) lazyToggler(cause e.ActionCause) (*memutil.SignatureNo
 	t, err := conf.New()
 	if err != nil {
 		return nil, fmt.Errorf("init toggler: %w", err)
-	}
-	if cause == nil {
-		cause = e.ActionCauseExternal
 	}
 	if t.Enabled() && !m.toggler.Check.Checked {
 		m.toggler.Check.SetChecked(true)
