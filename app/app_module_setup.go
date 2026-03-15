@@ -23,74 +23,57 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 }
 
 func (app *App) createControllerSensitivityModule(proc *win.Process) module.Config {
-	conf := &modules.ControllerSensitivity{
-		Process: proc,
-		Error:   app.onError("controller_sensitivity"),
-	}
+	conf := &modules.ControllerSensitivity{Process: proc}
 	conf.OnValueChanged = onModuleValueChanged[float64](app, conf.Identifier())
 	return conf
 }
 
 func (app *App) createNoDynamicFovModule(proc *win.Process) module.Config {
-	conf := &modules.NoDynamicFov{
-		Process: proc,
-		Error:   app.onError("no_dynamic_fov"),
-	}
+	conf := &modules.NoDynamicFov{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
 func (app *App) createNoHurtCamModule(proc *win.Process) module.Config {
-	conf := &modules.NoHurtCam{
-		Process: proc,
-		Error:   app.onError("no_hurt_cam"),
-	}
+	conf := &modules.NoHurtCam{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
 func (app *App) createAutoSprintModule(proc *win.Process) module.Config {
-	conf := &modules.AutoSprint{
-		Process: proc,
-		Error:   app.onError("auto_sprint"),
-	}
+	conf := &modules.AutoSprint{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
 func (app *App) createNoParticleModule(proc *win.Process) module.Config {
-	conf := &modules.NoParticle{
-		Process: proc,
-		Error:   app.onError("no_particle"),
-	}
+	conf := &modules.NoParticle{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
 func (app *App) createZoomModule(proc *win.Process) module.Config {
-	conf := &modules.Zoom{
-		Process: proc,
-		Error:   app.onError("zoom"),
-	}
+	conf := &modules.Zoom{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
 
 func (app *App) createTimeModule(proc *win.Process) module.Config {
-	conf := &modules.Time{
-		Process: proc,
-		Error:   app.onError("time"),
-	}
+	conf := &modules.Time{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
 	conf.OnUpdateState = app.onModuleToggled(conf.Identifier())
 	conf.OnUpdateValue = onModuleValueChanged[int32](app, conf.Identifier())
 	return conf
 }
 
 func (app *App) createItemDelayFixModule(proc *win.Process) module.Config {
-	conf := &modules.ItemDelayFix{
-		Process: proc,
-		Error:   app.onError("item_delay_fix"),
-	}
+	conf := &modules.ItemDelayFix{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
 }
