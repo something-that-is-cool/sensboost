@@ -47,7 +47,7 @@ func main() {
 }
 
 func closeApp(l *slog.Logger, a *app.App) {
-	if err := a.Close(); err != nil && !errors.Is(err, e.ErrClosed) {
+	if err := a.Close(); err != nil && !errors.Is(err, e.ErrAlreadyClosed) {
 		l.Error("close app", "err", err.Error())
 	}
 }

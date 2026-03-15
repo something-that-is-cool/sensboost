@@ -95,7 +95,7 @@ func (app *App) deployFyne() {
 
 	app.win.SetOnClosed(func() {
 		app.conf.Logger.Info("window closed via UI")
-		if err := app.Close(); err != nil {
+		if err := app.Close(); err != nil && !errors.Is(err, e.ErrAlreadyClosed) {
 			app.conf.Logger.Error("close app via ui", "err", err.Error())
 		}
 	})
@@ -121,7 +121,7 @@ func (app *App) Run() error {
 	}
 	go func() {
 		<-app.ctx.Done()
-		if err := app.closeLogic(closeCauseContextClosed); err != nil && !errors.Is(err, e.ErrClosed) {
+		if err := app.closeLogic(closeCauseContextClosed); err != nil && !errors.Is(err, e.ErrAlreadyClosed) {
 			app.conf.Logger.Error("close app logic", "err", err.Error())
 		}
 	}()
@@ -176,7 +176,7 @@ func (app *App) close(cause e.CloseCause) (multi error) {
 
 func (app *App) closeLogic(cause e.CloseCause) error {
 	if !app.closed.CompareAndSwap(false, true) {
-		return e.ErrClosed
+		return e.ErrAlreadyClosed
 	}
 	start := time.Now()
 	if cause == nil {
