@@ -128,7 +128,6 @@ func (app *App) Run() error {
 			}
 		case <-done:
 		}
-		<-app.ctx.Done()
 	}()
 	app.runBackgroundTasks()
 
