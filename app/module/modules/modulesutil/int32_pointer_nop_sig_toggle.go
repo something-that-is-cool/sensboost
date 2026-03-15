@@ -145,9 +145,6 @@ func (i *int32PointerNopSigToggle) Disable(cause e.ActionCause) {
 }
 
 func (i *int32PointerNopSigToggle) writeValue(v int32, after ...func()) {
-	if int32(i.si.Slider.Value) == v {
-		return
-	}
 	addr, err := i.lazyAddress()
 	if err != nil {
 		i.HandleError("lazy get (resolve) ptr address", err)
