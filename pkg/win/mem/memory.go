@@ -128,7 +128,7 @@ func Patch(p *win.Process, addr uintptr, b []byte) error {
 	return w.VirtualProtectEx(p.Handle, addr, uintptr(len(b)), oldProtect, &oldProtect)
 }
 
-const sigChunkSize = 1024 * 1024
+const sigChunkSize = 1024 * 1024 * 1 // 1 mb
 
 func ScanSignature(proc *win.Process, sig Signature) (uintptr, error) {
 	modBase, modSize, err := proc.GetModuleInfo()
