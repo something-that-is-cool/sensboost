@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/widget"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/something-that-is-cool/zutil/internal/misc"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
@@ -26,7 +26,7 @@ type Float32Module struct { // so float64 would be DoublePointerModule
 	FinalAddress   uintptr
 	ResolveAddress func() (uintptr, error)
 
-	OnValueChanged func(float64)
+	OnValueChanged func(float64, e.ActionCause)
 }
 
 // New ...
@@ -38,43 +38,45 @@ func (conf Float32Module) New() (ModuleWithValue[float64], error) {
 		conf.MemoryToSlider = func(f float32) float64 { return float64(f) }
 	}
 	f := &float32Module{
-		err:     conf.Error,
-		proc:    conf.Process,
-		sToM:    conf.SliderToMemory,
-		mToS:    conf.MemoryToSlider,
-		min:     conf.Min,
-		max:     conf.Max,
-		def:     conf.Default,
-		ptr:     conf.Ptr,
-		a:       conf.FinalAddress,
-		resolve: conf.ResolveAddress,
+		ErrorHandler: errorHandler{err: conf.Error},
+		proc:         conf.Process,
+		sToM:         conf.SliderToMemory,
+		mToS:         conf.MemoryToSlider,
+		min:          conf.Min,
+		max:          conf.Max,
+		def:          conf.Default,
+		ptr:          conf.Ptr,
+		a:            conf.FinalAddress,
+		resolve:      conf.ResolveAddress,
 	}
 	v, err := f.initialRead()
 	if err != nil {
 		v = conf.Default
 		conf.Error(fmt.Errorf("initial read: %w", err))
 	}
-	c := fyneutil.SliderWithTrackedInput{
+	f.si = &fyneutil.SliderWithTrackedInput{
 		Default:       v,
 		Min:           conf.Min,
 		Max:           conf.Max,
 		Step:          conf.Step,
 		ShowRemainder: conf.ShowRemainer,
-		OnEditSlider: func(_ *widget.Slider, _, new float64) {
-			if !f.forceWrite(new) {
-				return
+		Action: func(newVal float64, cause e.ActionCause) error {
+			if !f.forceWrite(newVal) {
+				return nil
 			}
-			conf.OnValueChanged(new)
+			conf.OnValueChanged(newVal, cause)
+			return nil
 		},
 	}
-	f.slider, f.input = c.Create()
+	f.si.Create()
 	return f, nil
 }
 
 var _ ModuleWithValue[float64] = (*float32Module)(nil)
 
 type float32Module struct {
-	err  func(error)
+	e.ErrorHandler
+
 	proc *win.Process
 
 	sToM func(float64) float32
@@ -84,8 +86,7 @@ type float32Module struct {
 
 	ptr PointerSettings
 
-	slider *widget.Slider
-	input  *widget.Entry
+	si *fyneutil.SliderWithTrackedInput
 
 	val misc.ValueWithRWMutex[struct {
 		v        float64
@@ -98,15 +99,15 @@ type float32Module struct {
 
 // CreateObjects ...
 func (m *float32Module) CreateObjects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{m.slider, m.input}
+	return []fyne.CanvasObject{m.si.Slider, m.si.Input}
 }
 
 // SetValue ...
-func (m *float32Module) SetValue(v float64) error {
-	if mgl64.FloatEqual(m.slider.Value, v) {
+func (m *float32Module) SetValue(v float64, cause e.ActionCause) error {
+	if mgl64.FloatEqual(m.si.Slider.Value, v) {
 		return fmt.Errorf("value is already %.3f", v)
 	}
-	m.slider.SetValue(v)
+	m.si.Set(v, cause)
 	return nil
 }
 
@@ -122,7 +123,7 @@ func (m *float32Module) Value() (float64, bool) {
 }
 
 // Disable ...
-func (m *float32Module) Disable() {
+func (m *float32Module) Disable(e.ActionCause) {
 	m.forceWrite(m.def) // already normalizes !!!
 }
 
@@ -151,7 +152,7 @@ func (m *float32Module) write(val float64) error {
 func (m *float32Module) forceWrite(val float64) bool {
 	err := m.write(val)
 	if err != nil {
-		m.err(fmt.Errorf("write %g: %w", val, err))
+		m.HandleError(fmt.Sprintf("write %g", val), err)
 		return false
 	}
 	return true

@@ -13,6 +13,7 @@ import (
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/internal/version"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 )
 
@@ -78,6 +79,8 @@ func (app *App) importConfig() {
 	}, app.win)
 }
 
+var actionCauseImportedConfig = e.NewActionCause("imported config")
+
 func (app *App) doImport(reader fyne.URIReadCloser) error {
 	d, err := io.ReadAll(reader)
 	if err != nil {
@@ -88,7 +91,7 @@ func (app *App) doImport(reader fyne.URIReadCloser) error {
 		return fmt.Errorf("unmarshal json: %w", err)
 	}
 	toEdit := app.applyConfig(conf)
-	app.doModuleUpdates(toEdit)
+	app.doModuleUpdates(toEdit, actionCauseImportedConfig)
 	return nil
 }
 
@@ -129,9 +132,11 @@ func (app *App) doExport(writer fyne.URIWriteCloser) error {
 	return nil
 }
 
+var actionCauseResetConfig = e.NewActionCause("reset config")
+
 func (app *App) resetConfig() {
 	toEdit := app.applyConfig(DefaultUserConfig())
-	app.doModuleUpdates(toEdit)
+	app.doModuleUpdates(toEdit, actionCauseResetConfig)
 }
 
 func (app *App) applyConfig(newConf *UserConfig) map[module.Module]module.Property {

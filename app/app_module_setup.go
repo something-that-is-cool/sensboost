@@ -1,8 +1,11 @@
 package app
 
 import (
+	"errors"
+
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 )
 
@@ -94,6 +97,14 @@ func (app *App) createUnlockFPSModule(proc *win.Process) module.Config {
 
 func (app *App) onError(mod string) func(err error) {
 	return func(err error) {
+		if errors.As(err, new(e.ErrStateAlreadyIs)) {
+			return
+		}
 		app.conf.Logger.Error("an error occurred", "module", mod, "err", err.Error())
 	}
 }
+
+var (
+	actionCauseModuleDisabled      = e.NewActionCause("module disabled")
+	actionCauseModuleToggledByBind = e.NewActionCause("module toggled by bind")
+)

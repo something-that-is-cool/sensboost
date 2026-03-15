@@ -5,92 +5,106 @@ import (
 	"strconv"
 
 	"fyne.io/fyne/v2/widget"
+	"github.com/something-that-is-cool/zutil/internal/misc"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 )
 
 type SliderWithTrackedInput struct {
-	Min, Max, Default, Step float64
+	Handler        e.ErrorHandler
+	Action         func(v float64, cause e.ActionCause) error
+	DefaultCause   e.ActionCause
+	Min, Max, Step float64
+	Default        float64
+	ShowRemainder  bool
+	FormatFloat    func(float64) string
+	Slider         *widget.Slider
+	Input          *widget.Entry
 
-	ShowRemainder bool
-	FormatFloat   func(float64) string
+	sliderRecursive bool
+	inputRecursive  bool
 
-	InitSlider func(*widget.Slider)
-	InitInput  func(*widget.Entry)
-
-	OnEditSlider func(slier *widget.Slider, old, new float64)
-	OnEditInput  func(input *widget.Entry, old, new string)
+	previousSlider float64
+	previousInput  string
 }
 
-func (conf SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
-	if conf.OnEditSlider == nil {
-		conf.OnEditSlider = func(_ *widget.Slider, _, _ float64) {}
+func (s *SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
+	if s.Action == nil {
+		panic("must set action")
 	}
-	if conf.OnEditInput == nil {
-		conf.OnEditInput = func(_ *widget.Entry, _, _ string) {}
+	if s.Handler == nil {
+		s.Handler = e.NopErrorHandler{}
 	}
-	slider := widget.NewSlider(conf.Min, conf.Max)
-	if conf.InitSlider != nil {
-		conf.InitSlider(slider)
+	if s.DefaultCause == nil {
+		s.DefaultCause = e.ActionCauseExternal
 	}
-	if conf.Step <= 0 {
-		conf.Step = 1.0
+	if s.Slider == nil {
+		s.Slider = widget.NewSlider(s.Min, s.Max)
 	}
-	slider.Step = conf.Step
-	if slider.Value == 0 {
-		slider.SetValue(conf.Default)
+	if s.Step <= 0 {
+		s.Step = 1.0
 	}
-	input := widget.NewEntry()
-	if conf.InitInput != nil {
-		conf.InitInput(input)
+	s.Slider.Step = s.Step
+	if s.Slider.Value == 0 {
+		s.Slider.SetValue(s.Default)
+	}
+	if s.Input == nil {
+		s.Input = widget.NewEntry()
 	}
 	format := formatFloatDefault
-	if conf.ShowRemainder {
+	if s.ShowRemainder {
 		format = formatFloatWithRemainder
 	}
-	if conf.FormatFloat != nil {
-		format = formatFloatWithRemainder
+	if s.FormatFloat != nil {
+		format = s.FormatFloat
 	}
-	if input.Text == "" {
-		input.Text = format(conf.Default)
+	if s.Input.Text == "" {
+		s.Input.Text = format(s.Default)
 	}
-	sliderRecursive := false
-	inputRecursive := false
-
-	previousSlider := 0.0
-	slider.OnChanged = func(f float64) {
-		if sliderRecursive {
+	s.Slider.OnChanged = func(f float64) {
+		if s.sliderRecursive {
 			return
 		}
-		inputRecursive = true
-		input.SetText(format(f))
-		inputRecursive = false
+		s.inputRecursive = true
+		s.Input.SetText(format(f))
+		s.inputRecursive = false
 	}
-	slider.OnChangeEnded = func(f float64) {
-		if sliderRecursive {
+	s.Slider.OnChangeEnded = func(f float64) {
+		if s.sliderRecursive {
 			return
 		}
-		conf.OnEditSlider(slider, previousSlider, f)
-		previousSlider = f
+		s.Set(f, s.DefaultCause, true)
+		s.previousSlider = f
 	}
-	previousInput := ""
-	input.OnChanged = func(s string) {
-		if inputRecursive {
+	s.Input.OnChanged = func(str string) {
+		if s.inputRecursive {
 			return
 		}
-		f, err := strconv.ParseFloat(s, 64)
-		if err != nil || (err == nil && (f < conf.Min || f > conf.Max)) {
-			f = slider.Value
+		f, err := strconv.ParseFloat(str, 64)
+		if err != nil || (err == nil && (f < s.Min || f > s.Max)) {
+			f = s.Slider.Value
 		} else {
-			conf.OnEditInput(input, previousInput, s)
+			s.Set(f, s.DefaultCause, true)
 		}
-		previousInput = s
-		// must make input instead of slider recursive here so slider can call
-		// handler
-		inputRecursive = true
-		slider.SetValue(f)
-		input.SetText(format(f))
-		inputRecursive = false
+		s.previousInput = str
+		// must make input instead of slider recursive here so slider can call handler
+		s.inputRecursive = true
+		s.Slider.SetValue(f)
+		s.Input.SetText(format(f))
+		s.inputRecursive = false
 	}
-	return slider, input
+	return s.Slider, s.Input
+}
+
+func (s *SliderWithTrackedInput) Set(v float64, cause e.ActionCause, notRefresh ...bool) {
+	if err := s.Action(v, cause); err != nil {
+		s.Handler.HandleError("slider/input action", err)
+		return
+	}
+	s.Slider.Value = v
+	if !misc.HasTrueOption(notRefresh) {
+		s.Slider.Refresh()
+		s.Input.Refresh()
+	}
 }
 
 func formatFloatWithRemainder(f float64) string {

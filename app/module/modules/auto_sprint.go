@@ -5,6 +5,7 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
@@ -20,10 +21,10 @@ type AutoSprint struct {
 	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
-	OnToggle func(bool)
+	OnToggle func(bool, e.ActionCause)
 }
 
-func (conf *AutoSprint) Create(p module.Property) (module.Module, error) {
+func (conf *AutoSprint) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.ByteToggleModule{
 		Sig:      autoSprintSig,
 		Process:  conf.Process,
@@ -34,8 +35,11 @@ func (conf *AutoSprint) Create(p module.Property) (module.Module, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create byte toggle module: %w", err)
 	}
+	if cause == nil {
+		cause = e.ActionCauseExternal
+	}
 	m := &autoSprint{ToggleableModule: b}
-	m.Edit(p)
+	m.Edit(p, cause)
 	return m, nil
 }
 
@@ -61,6 +65,6 @@ func (*autoSprint) Description() string {
 }
 
 // Edit ...
-func (a *autoSprint) Edit(p module.Property) {
-	_ = a.UpdateState(p.Enabled)
+func (a *autoSprint) Edit(p module.Property, cause e.ActionCause) {
+	modulesutil.SyncState(a, p, cause)
 }

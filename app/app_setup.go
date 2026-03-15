@@ -31,7 +31,7 @@ func (app *App) createModulesFromConfigs(configs []module.Config) (*modulesMap, 
 		multiErr error
 	)
 	for _, m := range toCreate {
-		mod, err := m.Config.Create(m.Property)
+		mod, err := m.Config.Create(m.Property, nil)
 		if err != nil {
 			multiErr = multierr.Append(multiErr, err)
 			continue

@@ -6,7 +6,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
@@ -28,17 +28,17 @@ type Int32PointerNopSigToggle struct {
 	//SliderToMemory func(int32) int32
 	//MemoryToSlider func(int32) int32
 
-	OnValueChanged func(int32)
-	OnStateChanged func(bool)
+	OnValueChanged func(int32, e.ActionCause)
+	OnStateChanged func(bool, e.ActionCause)
 }
 
 // New ...
 func (conf Int32PointerNopSigToggle) New() (_ ToggleableModuleWithValue[int32], err error) {
 	i := &int32PointerNopSigToggle{
-		p:    conf.Ptr,
-		s:    conf.Sig,
-		err:  conf.Error,
-		proc: conf.Process,
+		ErrorHandler: errorHandler{err: conf.Error},
+		p:            conf.Ptr,
+		s:            conf.Sig,
+		proc:         conf.Process,
 		//sToM: conf.SliderToMemory,
 		//mToS: conf.MemoryToSlider,
 		addr:    conf.FinalAddr,
@@ -53,45 +53,50 @@ func (conf Int32PointerNopSigToggle) New() (_ ToggleableModuleWithValue[int32], 
 	if err != nil {
 		return nil, fmt.Errorf("create nop sig toggler: %w", err)
 	}
-	i.check = &widget.Check{Text: ToggleDisabled}
-	i.check.OnChanged = CheckSet(conf.Error, i.check, func(v bool, _ *widget.Check) error {
-		if err := i.toggler.Set(v); err != nil {
-			return fmt.Errorf("set toggler: %w", err)
-		}
-		// force writing value
-		i.writeValue(int32(i.slider.Value))
-		// and calling the handler
-		conf.OnStateChanged(v)
-		return nil
-	})
-	i.slider, i.input = fyneutil.SliderWithTrackedInput{
+	i.check = &fyneutil.Toggler{
+		Handler: i,
+		Action: func(v bool, cause e.ActionCause) error {
+			if err := i.toggler.Set(v); err != nil {
+				return fmt.Errorf("set toggler: %w", err)
+			}
+			i.writeValue(int32(i.si.Slider.Value), func() {
+				conf.OnStateChanged(v, cause)
+			})
+			return nil
+		},
+	}
+	i.check.Create()
+	i.si = &fyneutil.SliderWithTrackedInput{
 		Min:     float64(conf.Min),
 		Max:     float64(conf.Max),
 		Default: float64(conf.Default),
-		OnEditSlider: func(_ *widget.Slider, _, new float64) {
-			v := int32(math.Ceil(new))
-			i.writeValue(v)
-			conf.OnValueChanged(v)
+		Action: func(newVal float64, cause e.ActionCause) error {
+			v := int32(math.Ceil(newVal))
+			i.writeValue(v, func() {
+				conf.OnValueChanged(v, cause)
+			})
+			return nil
 		},
-	}.Create()
+	}
+	i.si.Create()
 	return i, nil
 }
 
 var _ ToggleableModuleWithValue[int32] = (*int32PointerNopSigToggle)(nil)
 
 type int32PointerNopSigToggle struct {
+	e.ErrorHandler
+
 	p PointerSettings
 	s SignatureSettings
 
-	err  func(error)
 	proc *win.Process
 
 	//sToM func(int32) int32
 	//mToS func(int32) int32
 
-	slider *widget.Slider
-	input  *widget.Entry
-	check  *widget.Check
+	si    *fyneutil.SliderWithTrackedInput
+	check *fyneutil.Toggler
 
 	toggler *memutil.SignatureNopToggler
 
@@ -101,54 +106,58 @@ type int32PointerNopSigToggle struct {
 
 // CreateObjects ...
 func (i *int32PointerNopSigToggle) CreateObjects() []fyne.CanvasObject {
-	si := container.NewAdaptiveGrid(2, i.slider, i.input)
-	return []fyne.CanvasObject{si, i.check}
+	si := container.NewAdaptiveGrid(2, i.si.Slider, i.si.Input)
+	return []fyne.CanvasObject{si, i.check.Check}
 }
 
 // SetValue ...
-func (i *int32PointerNopSigToggle) SetValue(v int32) error {
-	if int32(i.slider.Value) == v {
+func (i *int32PointerNopSigToggle) SetValue(v int32, cause e.ActionCause) error {
+	if int32(i.si.Slider.Value) == v {
 		return fmt.Errorf("value is already %d", v)
 	}
-	i.slider.SetValue(float64(v))
+	i.si.Set(float64(v), cause)
 	return nil
 }
 
 // Value ...
 func (i *int32PointerNopSigToggle) Value() (int32, bool) {
-	v := math.Ceil(i.slider.Value)
+	v := math.Ceil(i.si.Slider.Value)
 	return int32(v), true
 }
 
 // UpdateState ...
-func (i *int32PointerNopSigToggle) UpdateState(v bool) error {
-	if i.check.Checked == v {
-		return fmt.Errorf("state is already %t", v)
+func (i *int32PointerNopSigToggle) UpdateState(v bool, cause e.ActionCause) error {
+	if i.check.Check.Checked == v {
+		return e.ErrStateAlreadyIs{State: v}
 	}
-	i.check.SetChecked(v)
+	i.check.Set(v, cause)
 	return nil
 }
 
 // State ...
 func (i *int32PointerNopSigToggle) State() bool {
-	return i.check.Checked
+	return i.check.Check.Checked
 }
 
 // Disable ...
-func (i *int32PointerNopSigToggle) Disable() {
-	_ = i.UpdateState(false)
+func (i *int32PointerNopSigToggle) Disable(cause e.ActionCause) {
+	_ = i.UpdateState(false, cause)
 }
 
-func (i *int32PointerNopSigToggle) writeValue(v int32) {
+func (i *int32PointerNopSigToggle) writeValue(v int32, after ...func()) {
 	addr, err := i.lazyAddress()
 	if err != nil {
-		i.err(fmt.Errorf("lazy get (resolve) ptr address: %w", err))
+		i.HandleError("lazy get (resolve) ptr address", err)
 		return
 	}
 	err = mem.WriteMemory[int32](i.proc, addr, v)
 	if err != nil {
 		i.addr = 0 //force recalculate address
-		i.err(fmt.Errorf("write to pointer %d: %w", v, err))
+		i.HandleError(fmt.Sprintf("write to pointer %d", v), err)
+		return
+	}
+	for _, fn := range after {
+		fn()
 	}
 }
 

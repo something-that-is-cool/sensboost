@@ -27,9 +27,9 @@ func (app *App) showError(err error) {
 	dialog.ShowError(err, app.win)
 }
 
-func (app *App) doModuleUpdates(updates map[module.Module]module.Property) {
+func (app *App) doModuleUpdates(updates map[module.Module]module.Property, cause e.ActionCause) {
 	for m, property := range updates {
-		m.Edit(property)
+		m.Edit(property, cause)
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"github.com/something-that-is-cool/zutil/app/module"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 )
 
 type UserConfig struct {
@@ -104,8 +105,11 @@ func (app *App) writeConfig(conf *UserConfig, path string) (err error) {
 	return nil
 }
 
-func (app *App) onModuleToggled(id string) func(bool) {
-	return func(b bool) {
+func (app *App) onModuleToggled(id string) func(bool, e.ActionCause) {
+	return func(b bool, cause e.ActionCause) {
+		if e.ActionCauseIs(cause, actionCauseModuleDisabled) {
+			return
+		}
 		app.editProperty(id, func(p *module.Property) {
 			p.Enabled = b
 		})
@@ -113,8 +117,11 @@ func (app *App) onModuleToggled(id string) func(bool) {
 	}
 }
 
-func onModuleValueChanged[T any](app *App, id string) func(T) {
-	return func(v T) {
+func onModuleValueChanged[T any](app *App, id string) func(T, e.ActionCause) {
+	return func(v T, cause e.ActionCause) {
+		if e.ActionCauseIs(cause, actionCauseModuleDisabled) {
+			return
+		}
 		app.editProperty(id, func(p *module.Property) {
 			p.Value = v
 		})

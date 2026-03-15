@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/widget"
+	"github.com/something-that-is-cool/zutil/pkg/e"
+	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem/memutil"
@@ -16,50 +17,53 @@ type ByteToggleModule struct {
 	Process *win.Process
 
 	Error    func(error)
-	OnToggle func(bool)
+	OnToggle func(bool, e.ActionCause)
 }
 
 func (conf ByteToggleModule) New() (ToggleableModule, error) {
 	m := &byteToggleModule{
-		sig:  conf.Sig,
-		proc: conf.Process,
-		err:  conf.Error,
+		ErrorHandler: errorHandler{err: conf.Error},
+		sig:          conf.Sig,
+		proc:         conf.Process,
 	}
-	m.check = &widget.Check{Text: ToggleDisabled}
-	m.check.OnChanged = CheckSet(conf.Error, m.check, func(v bool, _ *widget.Check) error {
-		toggler, err := m.lazyToggler()
-		if err != nil {
-			return fmt.Errorf("get byte toggler: %w", err)
-		}
-		if err = toggler.Set(v); err != nil {
-			return fmt.Errorf("update byte toggler state: %w", err)
-		}
-		if conf.OnToggle != nil {
-			conf.OnToggle(v)
-		}
-		return nil
-	})
+	m.toggler = &fyneutil.Toggler{
+		Handler: m,
+		Action: func(v bool, cause e.ActionCause) error {
+			toggler, err := m.lazyToggler()
+			if err != nil {
+				return fmt.Errorf("get byte toggler: %w", err)
+			}
+			if err = toggler.Set(v); err != nil {
+				return fmt.Errorf("update byte toggler state: %w", err)
+			}
+			if conf.OnToggle != nil {
+				conf.OnToggle(v, cause)
+			}
+			return nil
+		},
+	}
+	m.toggler.Create()
 	return m, nil
 }
 
 var _ ToggleableModule = (*byteToggleModule)(nil)
 
 type byteToggleModule struct {
-	sig SignatureSettings
+	e.ErrorHandler
 
+	sig  SignatureSettings
 	proc *win.Process
-	err  func(error)
 
 	t *memutil.ByteToggler
 
-	check *widget.Check
+	toggler *fyneutil.Toggler
 }
 
-func (m *byteToggleModule) UpdateState(v bool) error {
-	if m.check.Checked == v {
-		return fmt.Errorf("state is already %t", v)
+func (m *byteToggleModule) UpdateState(v bool, cause e.ActionCause) error {
+	if m.toggler.Check.Checked == v {
+		return e.ErrStateAlreadyIs{State: v}
 	}
-	m.check.SetChecked(v)
+	m.toggler.Set(v, cause)
 	return nil
 }
 
@@ -71,14 +75,14 @@ func (m *byteToggleModule) State() bool {
 }
 
 func (m *byteToggleModule) CreateObjects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{m.check}
+	return []fyne.CanvasObject{m.toggler.Check}
 }
 
-func (m *byteToggleModule) Disable() {
+func (m *byteToggleModule) Disable(cause e.ActionCause) {
 	if m.t == nil || !m.t.Enabled() {
 		return
 	}
-	_ = m.UpdateState(false)
+	_ = m.UpdateState(false, cause)
 }
 
 func (m *byteToggleModule) lazyToggler() (*memutil.ByteToggler, error) {

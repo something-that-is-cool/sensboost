@@ -7,6 +7,7 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 )
 
@@ -20,10 +21,10 @@ var _ module.Config = (*ControllerSensitivity)(nil)
 type ControllerSensitivity struct {
 	Process        *win.Process
 	Error          func(error)
-	OnValueChanged func(float64)
+	OnValueChanged func(float64, e.ActionCause)
 }
 
-func (conf *ControllerSensitivity) Create(p module.Property) (module.Module, error) {
+func (conf *ControllerSensitivity) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	fc := &modulesutil.Float32Module{
 		Process:        conf.Process,
 		Error:          conf.Error,
@@ -43,8 +44,11 @@ func (conf *ControllerSensitivity) Create(p module.Property) (module.Module, err
 	if err != nil {
 		return nil, fmt.Errorf("create float ptr module: %w", err)
 	}
+	if cause == nil {
+		cause = e.ActionCauseExternal
+	}
 	c := &controllerSensitivity{ModuleWithValue: f}
-	c.Edit(p)
+	c.Edit(p, cause)
 	return c, nil
 }
 
@@ -78,8 +82,6 @@ func (*controllerSensitivity) Description() string {
 }
 
 // Edit ...
-func (c *controllerSensitivity) Edit(p module.Property) {
-	if v, ok := p.Value.(float64); ok {
-		_ = c.SetValue(v)
-	}
+func (c *controllerSensitivity) Edit(p module.Property, cause e.ActionCause) {
+	modulesutil.SyncValue[float64](c, p, cause)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
@@ -18,19 +19,19 @@ type ByteToggler struct {
 	state atomic.Bool
 }
 
-func (t *ByteToggler) Set(b bool) error {
-	if t.state.Load() == b {
-		return fmt.Errorf("state is already %t", b)
+func (t *ByteToggler) Set(v bool) error {
+	if t.state.Load() == v {
+		return e.ErrStateAlreadyIs{State: v}
 	}
 	data := t.Original
-	if b {
+	if v {
 		data = t.Patch
 	}
 	targetAddr := t.Address + t.Offset
 	if err := mem.Patch(t.Process, targetAddr, data); err != nil {
 		return fmt.Errorf("patch at 0x%X: %w", targetAddr, err)
 	}
-	t.state.Store(b)
+	t.state.Store(v)
 	return nil
 }
 

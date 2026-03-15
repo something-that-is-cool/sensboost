@@ -5,6 +5,7 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
@@ -19,10 +20,10 @@ type NoHurtCam struct {
 	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
-	OnToggle func(bool)
+	OnToggle func(bool, e.ActionCause)
 }
 
-func (conf *NoHurtCam) Create(p module.Property) (module.Module, error) {
+func (conf *NoHurtCam) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.SigToggleModule{
 		Sig:      noHurtCamSig,
 		Process:  conf.Process,
@@ -33,8 +34,11 @@ func (conf *NoHurtCam) Create(p module.Property) (module.Module, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create nop sig toggle module: %w", err)
 	}
+	if cause == nil {
+		cause = e.ActionCauseExternal
+	}
 	n := &noHurtCam{ToggleableModule: s}
-	n.Edit(p)
+	n.Edit(p, cause)
 	return n, nil
 }
 
@@ -60,6 +64,6 @@ func (*noHurtCam) Description() string {
 }
 
 // Edit ...
-func (n *noHurtCam) Edit(p module.Property) {
-	_ = n.UpdateState(p.Enabled)
+func (n *noHurtCam) Edit(p module.Property, cause e.ActionCause) {
+	modulesutil.SyncState(n, p, cause)
 }

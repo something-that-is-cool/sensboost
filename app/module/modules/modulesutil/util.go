@@ -3,34 +3,39 @@ package modulesutil
 import (
 	"fmt"
 
-	"fyne.io/fyne/v2/widget"
 	"github.com/something-that-is-cool/zutil/app/module"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 )
-
-const (
-	ToggleEnabled  = "enabled"
-	ToggleDisabled = "disabled"
-)
-
-func CheckSet(onError func(error), check *widget.Check, act func(bool, *widget.Check) error) func(bool) {
-	return func(b bool) {
-		if err := act(b, check); err != nil {
-			onError(fmt.Errorf("do action: %w", err))
-			return
-		}
-		if b {
-			check.Text = ToggleEnabled
-			check.Checked = true
-		} else {
-			check.Text = ToggleDisabled
-			check.Checked = false
-		}
-		check.Refresh()
-	}
-}
 
 type DefaultDisabled struct{}
 
 func (DefaultDisabled) DefaultProperty() module.Property {
 	return module.Property{Enabled: false}
+}
+
+var _ e.ErrorHandler = (*errorHandler)(nil)
+
+type errorHandler struct {
+	err func(error)
+}
+
+func (h errorHandler) HandleError(src string, err error) {
+	if err == nil {
+		return
+	}
+	if src == "" {
+		h.err(err)
+		return
+	}
+	h.err(fmt.Errorf("%s: %w", src, err))
+}
+
+func SyncState(m ToggleableModule, p module.Property, cause e.ActionCause) {
+	m.HandleError("update state by property", m.UpdateState(p.Enabled, cause))
+}
+
+func SyncValue[T any](m ModuleWithValue[T], p module.Property, cause e.ActionCause) {
+	if v, ok := p.Value.(T); ok {
+		m.HandleError("update value by property", m.SetValue(v, cause))
+	}
 }

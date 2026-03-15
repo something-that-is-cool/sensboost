@@ -5,6 +5,7 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
@@ -23,26 +24,29 @@ type NoDynamicFov struct {
 	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
-	OnToggle func(bool)
+	OnToggle func(bool, e.ActionCause)
 }
 
-func (conf *NoDynamicFov) Create(p module.Property) (module.Module, error) {
+func (conf *NoDynamicFov) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.SigToggleModule{
 		Sig:     noDynamicFovSig,
 		Process: conf.Process,
 		Error:   conf.Error,
 	}
 	cl := &fovClamper{proc: conf.Process, err: conf.Error}
-	c.OnToggle = func(b bool) {
+	c.OnToggle = func(b bool, cause e.ActionCause) {
 		cl.clamp()
-		conf.OnToggle(b)
+		conf.OnToggle(b, cause)
 	}
 	t, err := c.New()
 	if err != nil {
 		return nil, fmt.Errorf("create sig toggle module: %w", err)
 	}
+	if cause == nil {
+		cause = e.ActionCauseExternal
+	}
 	n := &noDynamicFov{ToggleableModule: t}
-	n.Edit(p)
+	n.Edit(p, cause)
 	return n, nil
 }
 
@@ -68,8 +72,8 @@ func (*noDynamicFov) Description() string {
 }
 
 // Edit ...
-func (n *noDynamicFov) Edit(p module.Property) {
-	_ = n.UpdateState(p.Enabled)
+func (n *noDynamicFov) Edit(p module.Property, cause e.ActionCause) {
+	modulesutil.SyncState(n, p, cause)
 }
 
 const maxStaticFloatValue float32 = 1.0

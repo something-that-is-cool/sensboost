@@ -1,17 +1,20 @@
 package module
 
-import "fyne.io/fyne/v2"
+import (
+	"fyne.io/fyne/v2"
+	"github.com/something-that-is-cool/zutil/pkg/e"
+)
 
 type Module interface {
 	Name() string
 	Description() string
 	CreateObjects() []fyne.CanvasObject
-	Edit(Property)
-	Disable()
+	Edit(p Property, cause e.ActionCause)
+	Disable(cause e.ActionCause)
 }
 
 type Config interface {
-	Create(Property) (Module, error)
+	Create(p Property, cause e.ActionCause) (Module, error)
 	DefaultProperty() Property
 	Identifier() string // identify in config
 }

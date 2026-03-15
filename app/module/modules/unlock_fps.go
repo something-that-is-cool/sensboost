@@ -5,6 +5,7 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
@@ -19,11 +20,11 @@ type UnlockFPS struct {
 	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
-	OnToggle func(bool)
+	OnToggle func(bool, e.ActionCause)
 }
 
 // Create ...
-func (conf *UnlockFPS) Create(p module.Property) (module.Module, error) {
+func (conf *UnlockFPS) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.SigToggleModule{
 		Sig:      unlockFPSSignature,
 		Process:  conf.Process,
@@ -34,8 +35,11 @@ func (conf *UnlockFPS) Create(p module.Property) (module.Module, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create byte toggler module: %w", err)
 	}
+	if cause == nil {
+		cause = e.ActionCauseExternal
+	}
 	m := &unlockFPS{ToggleableModule: b}
-	m.Edit(p)
+	m.Edit(p, cause)
 	return m, nil
 }
 
@@ -61,6 +65,6 @@ func (u *unlockFPS) Description() string {
 }
 
 // Edit ...
-func (u *unlockFPS) Edit(property module.Property) {
-	_ = u.UpdateState(property.Enabled)
+func (u *unlockFPS) Edit(p module.Property, cause e.ActionCause) {
+	modulesutil.SyncState(u, p, cause)
 }

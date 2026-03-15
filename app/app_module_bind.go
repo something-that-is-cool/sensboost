@@ -95,7 +95,7 @@ func (app *App) bindToggleModule(id string, m module.Module) func() {
 		v := t.State()
 
 		fyne.DoAndWait(func() {
-			if err := t.UpdateState(!v); err != nil {
+			if err := t.UpdateState(!v, actionCauseModuleToggledByBind); err != nil {
 				app.conf.Logger.Error("cannot toggle module state", "id", id)
 			}
 		})

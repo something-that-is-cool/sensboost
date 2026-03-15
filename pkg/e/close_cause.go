@@ -1,8 +1,6 @@
 package e
 
-import (
-	"errors"
-)
+import "errors"
 
 type CloseCause interface {
 	error

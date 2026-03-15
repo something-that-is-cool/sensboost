@@ -6,6 +6,7 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
@@ -26,12 +27,12 @@ type Time struct {
 	Process *win.Process
 	Error   func(error)
 
-	OnUpdateState func(bool)
-	OnUpdateValue func(int32)
+	OnUpdateState func(bool, e.ActionCause)
+	OnUpdateValue func(int32, e.ActionCause)
 }
 
 // Create ...
-func (conf *Time) Create(p module.Property) (module.Module, error) {
+func (conf *Time) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := modulesutil.Int32PointerNopSigToggle{
 		Ptr:            timePtr,
 		Sig:            disableTimeSig,
@@ -45,8 +46,11 @@ func (conf *Time) Create(p module.Property) (module.Module, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create i32 ptr nop sig toggle module: %w", err)
 	}
+	if cause == nil {
+		cause = e.ActionCauseExternal
+	}
 	t := &time{ToggleableModuleWithValue: i}
-	t.Edit(p)
+	t.Edit(p, cause)
 	return t, nil
 }
 
@@ -77,12 +81,15 @@ func (t *time) Description() string {
 }
 
 // Edit ...
-func (t *time) Edit(p module.Property) {
-	_ = t.UpdateState(p.Enabled)
-	// don't forget to also update value
-	if v, ok := getInteger(p.Value); ok {
-		_ = t.SetValue(v)
+func (t *time) Edit(p module.Property, cause e.ActionCause) {
+	modulesutil.SyncState(t, p, cause)
+
+	v, ok := getInteger(p.Value)
+	if !ok {
+		return
 	}
+	p.Value = v
+	modulesutil.SyncValue[int32](t, p, cause)
 }
 
 func getInteger(val any) (int32, bool) {

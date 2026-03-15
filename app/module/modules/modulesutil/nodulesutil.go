@@ -2,29 +2,34 @@ package modulesutil
 
 import (
 	"fyne.io/fyne/v2"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 type Module interface {
+	e.ErrorHandler
 	CreateObjects() []fyne.CanvasObject
-	Disable()
+	Disable(cause e.ActionCause)
 }
 
 type ToggleableModule interface {
 	Module
-	UpdateState(bool) error
+	UpdateState(v bool, cause e.ActionCause) error
 	State() bool
 }
 
 type ModuleWithValue[T any] interface {
 	Module
-	SetValue(T) error
+	SetValue(v T, cause e.ActionCause) error
 	Value() (T, bool)
 }
 
 type ToggleableModuleWithValue[T any] interface {
-	ToggleableModule
-	ModuleWithValue[T]
+	Module
+	UpdateState(v bool, cause e.ActionCause) error
+	State() bool
+	SetValue(v T, cause e.ActionCause) error
+	Value() (T, bool)
 }
 
 type PointerSettings struct {

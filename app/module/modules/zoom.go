@@ -5,6 +5,7 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
@@ -20,11 +21,11 @@ type Zoom struct {
 	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
-	OnToggle func(bool)
+	OnToggle func(bool, e.ActionCause)
 }
 
 // Create ...
-func (conf *Zoom) Create(p module.Property) (module.Module, error) {
+func (conf *Zoom) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.ByteToggleModule{
 		Sig:      zoomSig,
 		Process:  conf.Process,
@@ -35,8 +36,11 @@ func (conf *Zoom) Create(p module.Property) (module.Module, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create byte toggler module: %w", err)
 	}
+	if cause == nil {
+		cause = e.ActionCauseExternal
+	}
 	m := &zoom{ToggleableModule: b}
-	m.Edit(p)
+	m.Edit(p, cause)
 	return m, nil
 }
 
@@ -62,6 +66,6 @@ func (z *zoom) Description() string {
 }
 
 // Edit ...
-func (z *zoom) Edit(property module.Property) {
-	_ = z.UpdateState(property.Enabled)
+func (z *zoom) Edit(p module.Property, cause e.ActionCause) {
+	modulesutil.SyncState(z, p, cause)
 }

@@ -220,7 +220,7 @@ func (app *App) disableModulesUnsafe() {
 	defer app.conf.Logger.Debug("disabled modules.")
 
 	for _, m := range app.data.V.modules.AllFromFront() {
-		m.Disable()
+		m.Disable(actionCauseModuleDisabled)
 		app.conf.Logger.Debug("disabled module.", "module", m.Name())
 	}
 }
