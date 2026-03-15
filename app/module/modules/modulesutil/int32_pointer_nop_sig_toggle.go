@@ -144,6 +144,8 @@ func (i *int32PointerNopSigToggle) Disable(cause e.ActionCause) {
 	i.HandleError("disable int32 ptr module", disableOnlyAction(i, cause))
 }
 
+//todo: write only when module enables
+
 func (i *int32PointerNopSigToggle) writeValue(v int32, after ...func()) {
 	addr, err := i.lazyAddress()
 	if err != nil {
