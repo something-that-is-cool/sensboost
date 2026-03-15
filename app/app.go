@@ -157,8 +157,13 @@ func (app *App) Close() error {
 	return app.close(nil)
 }
 
+var (
+	closeCauseTrackerClosed = e.NewCloseCauseString("tracker closed")
+	closeCauseContextClosed = e.NewCloseCause(context.Canceled)
+)
+
 // close must be called from fyne goroutine.
-func (app *App) close(cause error) (multi error) {
+func (app *App) close(cause e.CloseCause) (multi error) {
 	if err := app.closeLogic(cause); err != nil {
 		// already closed
 		return err
@@ -169,13 +174,13 @@ func (app *App) close(cause error) (multi error) {
 	return nil
 }
 
-func (app *App) closeLogic(cause error) error {
+func (app *App) closeLogic(cause e.CloseCause) error {
 	if !app.closed.CompareAndSwap(false, true) {
 		return e.ErrClosed
 	}
 	start := time.Now()
 	if cause == nil {
-		cause = closeCauseExternal
+		cause = e.CloseCauseExternal
 	}
 	app.conf.Logger.Info("closing app logic...", "cause", cause.Error())
 	defer func() {
@@ -189,7 +194,7 @@ func (app *App) closeLogic(cause error) error {
 	return nil
 }
 
-func (app *App) closeIfStarted(cause error) {
+func (app *App) closeIfStarted(cause e.CloseCause) {
 	app.data.Lock()
 	defer app.data.Unlock() // release lock earlier because we don't want to lock until wg done
 
@@ -198,7 +203,7 @@ func (app *App) closeIfStarted(cause error) {
 		app.saveUserConfig(app.app)
 		// if closed because parent process closed, we don't need to disable
 		// all modules as it will not affect
-		if !errors.Is(cause, closeCauseTrackerClosed) {
+		if !e.CloseCauseIs(cause, closeCauseTrackerClosed) {
 			// disable all modules before canceling context
 			// if we will not do this any logic that takes our context can end
 			// earlier so it won't disable modules properly

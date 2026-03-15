@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	fyne.io/fyne/v2 v2.7.3
+	github.com/Marlliton/slogpretty v0.1.3
 	github.com/ebitengine/hideconsole v1.0.0
 	github.com/elliotchance/orderedmap/v3 v3.1.0
 	github.com/go-gl/mathgl v1.2.0

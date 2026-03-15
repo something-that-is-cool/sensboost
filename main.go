@@ -12,22 +12,23 @@ import (
 
 	"github.com/go-vgo/robotgo"
 	"github.com/something-that-is-cool/zutil/app"
+	"github.com/something-that-is-cool/zutil/internal/logger"
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 
 	_ "github.com/ebitengine/hideconsole"
 )
 
+const DisableDebugLogs = false
+
 var config = app.Config{
-	Logger:  slog.Default(),
 	Process: "Minecraft.Windows.exe",
+	Logger:  createLogger(),
 }
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-
-	slog.SetLogLoggerLevel(slog.LevelDebug)
 
 	log := config.Logger.With("src", "initial-logs")
 	log.Info("creating app instance...")
@@ -59,4 +60,9 @@ func doPanic(v any) {
 	)
 	robotgo.Alert("Program exited with error (panic)", msg)
 	os.Exit(1)
+}
+
+func createLogger() *slog.Logger {
+	//goland:noinspection GoBoolExpressions
+	return logger.NewPrettySlogger(os.Stdout, logger.Level(!DisableDebugLogs))
 }
