@@ -119,11 +119,16 @@ func (app *App) Run() error {
 		app.data.Unlock()
 		return fmt.Errorf("init: %w", err)
 	}
+	done := make(chan struct{})
 	go func() {
-		<-app.ctx.Done()
-		if err := app.closeLogic(closeCauseContextClosed); err != nil && !errors.Is(err, e.ErrAlreadyClosed) {
-			app.conf.Logger.Error("close app logic", "err", err.Error())
+		select {
+		case <-app.ctx.Done():
+			if err := app.close(closeCauseContextClosed); err != nil && !errors.Is(err, e.ErrAlreadyClosed) {
+				app.conf.Logger.Error("close app", "err", err.Error())
+			}
+		case <-done:
 		}
+		<-app.ctx.Done()
 	}()
 	app.runBackgroundTasks()
 
@@ -132,6 +137,7 @@ func (app *App) Run() error {
 
 	app.conf.Logger.Info("running window...")
 	app.win.ShowAndRun() // blocks
+	close(done)
 	// wait for graceful window closure...
 	app.conf.Logger.Info("window closed gracefully.")
 	return nil
@@ -154,7 +160,7 @@ func (app *App) runBackgroundTasks() {
 
 // Close implements io.Closer.
 func (app *App) Close() error {
-	return app.close(nil)
+	return app.close(nil, true)
 }
 
 var (
@@ -163,14 +169,17 @@ var (
 )
 
 // close must be called from fyne goroutine.
-func (app *App) close(cause e.CloseCause) (multi error) {
-	if err := app.closeLogic(cause); err != nil {
-		// already closed
+func (app *App) close(cause e.CloseCause, main ...bool) (multi error) {
+	if err := app.closeLogic(cause); err != nil && errors.Is(err, e.ErrAlreadyClosed) {
 		return err
 	}
 	app.conf.Logger.Debug("closing window...")
 	// close window last of all !!!
-	app.app.Quit()
+	relay := func(fn func()) { fn() }
+	if !misc.HasTrueOption(main) {
+		relay = fyne.DoAndWait
+	}
+	relay(app.app.Quit)
 	return nil
 }
 
@@ -198,21 +207,24 @@ func (app *App) closeIfStarted(cause e.CloseCause) {
 	app.data.Lock()
 	defer app.data.Unlock() // release lock earlier because we don't want to lock until wg done
 
-	if app.data.V.started {
-		// save the user config
-		app.saveUserConfig(app.app)
-		// if closed because parent process closed, we don't need to disable
-		// all modules as it will not affect
-		if !e.CloseCauseIs(cause, closeCauseTrackerClosed) {
-			// disable all modules before canceling context
-			// if we will not do this any logic that takes our context can end
-			// earlier so it won't disable modules properly
-			app.disableModulesUnsafe()
-		}
+	defer func() {
+		// after we disabled all modules we can close the context safely
+		app.cancel()
+		app.tr.Close()
+	}()
+	if !app.data.V.started {
+		return
 	}
-	// after we disabled all modules we can close the context safely
-	app.cancel()
-	app.tr.Close()
+	// save the user config
+	app.saveUserConfig(app.app)
+	// if closed because parent process closed, we don't need to disable
+	// all modules as it will not affect
+	if !e.CloseCauseIs(cause, closeCauseTrackerClosed) {
+		// disable all modules before canceling context
+		// if we will not do this any logic that takes our context can end
+		// earlier so it won't disable modules properly
+		app.disableModulesUnsafe()
+	}
 }
 
 func (app *App) disableModulesUnsafe() {

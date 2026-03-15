@@ -111,11 +111,11 @@ func (i *int32PointerNopSigToggle) CreateObjects() []fyne.CanvasObject {
 }
 
 // SetValue ...
-func (i *int32PointerNopSigToggle) SetValue(v int32, cause e.ActionCause) error {
+func (i *int32PointerNopSigToggle) SetValue(v int32, cause e.ActionCause, opts ...any) error {
 	if int32(i.si.Slider.Value) == v {
-		return fmt.Errorf("value is already %d", v)
+		return &e.ErrValuesIsAlready{Value: v}
 	}
-	i.si.Set(float64(v), cause)
+	i.si.Set(float64(v), cause, opts...)
 	return nil
 }
 
@@ -126,11 +126,11 @@ func (i *int32PointerNopSigToggle) Value() (int32, bool) {
 }
 
 // UpdateState ...
-func (i *int32PointerNopSigToggle) UpdateState(v bool, cause e.ActionCause) error {
+func (i *int32PointerNopSigToggle) UpdateState(v bool, cause e.ActionCause, opts ...any) error {
 	if i.check.Check.Checked == v {
-		return e.ErrStateAlreadyIs{State: v}
+		return &e.ErrValuesIsAlready{Value: v}
 	}
-	i.check.Set(v, cause)
+	i.check.Set(v, cause, opts...)
 	return nil
 }
 
@@ -141,10 +141,13 @@ func (i *int32PointerNopSigToggle) State() bool {
 
 // Disable ...
 func (i *int32PointerNopSigToggle) Disable(cause e.ActionCause) {
-	_ = i.UpdateState(false, cause)
+	i.HandleError("disable int32 ptr module", disableOnlyAction(i, cause))
 }
 
 func (i *int32PointerNopSigToggle) writeValue(v int32, after ...func()) {
+	if int32(i.si.Slider.Value) == v {
+		return
+	}
 	addr, err := i.lazyAddress()
 	if err != nil {
 		i.HandleError("lazy get (resolve) ptr address", err)

@@ -10,7 +10,7 @@ type Module interface {
 	Description() string
 	CreateObjects() []fyne.CanvasObject
 	Edit(p Property, cause e.ActionCause)
-	Disable(cause e.ActionCause)
+	Disable(cause e.ActionCause) // must not be fyne-obsessed
 }
 
 type Config interface {

@@ -21,7 +21,7 @@ type ByteToggler struct {
 
 func (t *ByteToggler) Set(v bool) error {
 	if t.state.Load() == v {
-		return e.ErrStateAlreadyIs{State: v}
+		return &e.ErrValuesIsAlready{Value: v}
 	}
 	data := t.Original
 	if v {

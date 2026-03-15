@@ -18,7 +18,7 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 		app.createNoParticleModule(proc),
 		app.createZoomModule(proc),
 		app.createTimeModule(proc),
-		app.createUnlockFPSModule(proc),
+		app.createItemDelayFixModule(proc),
 	}
 }
 
@@ -86,10 +86,10 @@ func (app *App) createTimeModule(proc *win.Process) module.Config {
 	return conf
 }
 
-func (app *App) createUnlockFPSModule(proc *win.Process) module.Config {
-	conf := &modules.UnlockFPS{
+func (app *App) createItemDelayFixModule(proc *win.Process) module.Config {
+	conf := &modules.ItemDelayFix{
 		Process: proc,
-		Error:   app.onError("unlock_fps"),
+		Error:   app.onError("item_delay_fix"),
 	}
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
@@ -97,7 +97,7 @@ func (app *App) createUnlockFPSModule(proc *win.Process) module.Config {
 
 func (app *App) onError(mod string) func(err error) {
 	return func(err error) {
-		if errors.As(err, new(e.ErrStateAlreadyIs)) {
+		if errors.As(err, new(*e.ErrValuesIsAlready)) {
 			return
 		}
 		app.conf.Logger.Error("an error occurred", "module", mod, "err", err.Error())

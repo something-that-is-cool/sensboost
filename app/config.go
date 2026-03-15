@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"fyne.io/fyne/v2"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 )
 
@@ -31,8 +30,7 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	app := &App{conf: conf}
 	trackerConf := win.ProcessTrackerConfig{
 		CloseHandlers: []func(){func() {
-			_ = app.closeLogic(closeCauseTrackerClosed)
-			fyne.DoAndWait(app.app.Quit)
+			_ = app.close(closeCauseTrackerClosed)
 		}},
 		Process: proc,
 	}

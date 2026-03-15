@@ -14,21 +14,21 @@ type Module interface {
 
 type ToggleableModule interface {
 	Module
-	UpdateState(v bool, cause e.ActionCause) error
+	UpdateState(v bool, cause e.ActionCause, opts ...any) error
 	State() bool
 }
 
 type ModuleWithValue[T any] interface {
 	Module
-	SetValue(v T, cause e.ActionCause) error
+	SetValue(v T, cause e.ActionCause, opts ...any) error
 	Value() (T, bool)
 }
 
 type ToggleableModuleWithValue[T any] interface {
 	Module
-	UpdateState(v bool, cause e.ActionCause) error
+	UpdateState(v bool, cause e.ActionCause, opts ...any) error
 	State() bool
-	SetValue(v T, cause e.ActionCause) error
+	SetValue(v T, cause e.ActionCause, opts ...any) error
 	Value() (T, bool)
 }
 

@@ -2,7 +2,6 @@ package fyneutil
 
 import (
 	"fyne.io/fyne/v2/widget"
-	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 )
 
@@ -43,9 +42,18 @@ func (t *Toggler) Create() *widget.Check {
 	return t.Check
 }
 
-func (t *Toggler) Set(v bool, cause e.ActionCause, notRefresh ...bool) {
+type (
+	TogglerOptionNotRefresh     struct{}
+	TogglerOptionOnlyCallAction struct{}
+)
+
+func (t *Toggler) Set(v bool, cause e.ActionCause, opts ...any) {
+	notRefresh, onlyCallAction := handleTogglerOpts(opts)
 	if err := t.Action(v, cause); err != nil {
 		t.Handler.HandleError("do action", err)
+		return
+	}
+	if onlyCallAction {
 		return
 	}
 	if v {
@@ -55,8 +63,20 @@ func (t *Toggler) Set(v bool, cause e.ActionCause, notRefresh ...bool) {
 		t.Check.Text = ToggleDisabled
 		t.Check.Checked = false
 	}
-	if misc.HasTrueOption(notRefresh) {
+	if notRefresh {
 		return
 	}
 	t.Check.Refresh()
+}
+
+func handleTogglerOpts(x []any) (notRefresh, onlyCallAction bool) {
+	for _, v := range x {
+		switch v.(type) {
+		case TogglerOptionNotRefresh:
+			notRefresh = true
+		case TogglerOptionOnlyCallAction:
+			onlyCallAction = true
+		}
+	}
+	return
 }

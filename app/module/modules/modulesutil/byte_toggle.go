@@ -59,11 +59,11 @@ type byteToggleModule struct {
 	toggler *fyneutil.Toggler
 }
 
-func (m *byteToggleModule) UpdateState(v bool, cause e.ActionCause) error {
+func (m *byteToggleModule) UpdateState(v bool, cause e.ActionCause, opts ...any) error {
 	if m.toggler.Check.Checked == v {
-		return e.ErrStateAlreadyIs{State: v}
+		return &e.ErrValuesIsAlready{Value: v}
 	}
-	m.toggler.Set(v, cause)
+	m.toggler.Set(v, cause, opts...)
 	return nil
 }
 
@@ -79,10 +79,7 @@ func (m *byteToggleModule) CreateObjects() []fyne.CanvasObject {
 }
 
 func (m *byteToggleModule) Disable(cause e.ActionCause) {
-	if m.t == nil || !m.t.Enabled() {
-		return
-	}
-	_ = m.UpdateState(false, cause)
+	m.HandleError("disable byte toggle module", disableOnlyAction(m, cause))
 }
 
 func (m *byteToggleModule) lazyToggler() (*memutil.ByteToggler, error) {
@@ -91,7 +88,7 @@ func (m *byteToggleModule) lazyToggler() (*memutil.ByteToggler, error) {
 	}
 	addr, err := mem.ScanSignature(m.proc, m.sig.Signature)
 	if err != nil {
-		return nil, fmt.Errorf("signature not found: %w", err)
+		return nil, fmt.Errorf("scan sig: %w", err)
 	}
 	original := m.sig.Original
 	if original == nil {

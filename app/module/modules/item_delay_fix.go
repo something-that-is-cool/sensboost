@@ -10,13 +10,14 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var unlockFPSSignature = modulesutil.SignatureSettings{
-	Signature: mem.MustParseSignature("41 8B 9D 98 00 00 00"),
+var itemDelayFixSignature = modulesutil.SignatureSettings{
+	Signature: mem.MustParseSignature("48 89 86 88 00 00 00 48"),
+	Patch:     mem.MustParseSignature("90 90 90 90 90 90 90 48"),
 }
 
-var _ module.Config = (*UnlockFPS)(nil)
+var _ module.Config = (*ItemDelayFix)(nil)
 
-type UnlockFPS struct {
+type ItemDelayFix struct {
 	modulesutil.DefaultDisabled
 	Process  *win.Process
 	Error    func(error)
@@ -24,9 +25,9 @@ type UnlockFPS struct {
 }
 
 // Create ...
-func (conf *UnlockFPS) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
-	c := &modulesutil.SigToggleModule{
-		Sig:      unlockFPSSignature,
+func (conf *ItemDelayFix) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
+	c := &modulesutil.ByteToggleModule{
+		Sig:      itemDelayFixSignature,
 		Process:  conf.Process,
 		Error:    conf.Error,
 		OnToggle: conf.OnToggle,
@@ -38,33 +39,33 @@ func (conf *UnlockFPS) Create(p module.Property, cause e.ActionCause) (module.Mo
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	m := &unlockFPS{ToggleableModule: b}
+	m := &itemDelayFix{ToggleableModule: b}
 	m.Edit(p, cause)
 	return m, nil
 }
 
 // Identifier ...
-func (conf *UnlockFPS) Identifier() string {
-	return "unlock_fps"
+func (conf *ItemDelayFix) Identifier() string {
+	return "item_delay_fix"
 }
 
-var _ module.Module = (*unlockFPS)(nil)
+var _ module.Module = (*itemDelayFix)(nil)
 
-type unlockFPS struct {
+type itemDelayFix struct {
 	modulesutil.ToggleableModule
 }
 
 // Name ...
-func (u *unlockFPS) Name() string {
-	return "unlock fps"
+func (*itemDelayFix) Name() string {
+	return "item delay fix"
 }
 
 // Description ...
-func (u *unlockFPS) Description() string {
+func (*itemDelayFix) Description() string {
 	return "..."
 }
 
 // Edit ...
-func (u *unlockFPS) Edit(p module.Property, cause e.ActionCause) {
-	modulesutil.SyncState(u, p, cause)
+func (i *itemDelayFix) Edit(p module.Property, cause e.ActionCause) {
+	modulesutil.SyncState(i, p, cause)
 }

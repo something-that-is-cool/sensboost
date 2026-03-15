@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"fyne.io/fyne/v2/widget"
-	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 )
 
@@ -39,26 +38,21 @@ func (s *SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 	}
 	if s.Slider == nil {
 		s.Slider = widget.NewSlider(s.Min, s.Max)
+		s.Slider.Value = s.Default
 	}
 	if s.Step <= 0 {
 		s.Step = 1.0
 	}
 	s.Slider.Step = s.Step
-	if s.Slider.Value == 0 {
-		s.Slider.SetValue(s.Default)
-	}
+	s.Slider.Min = s.Min
+	s.Slider.Max = s.Max
+
 	if s.Input == nil {
 		s.Input = widget.NewEntry()
 	}
-	format := formatFloatDefault
-	if s.ShowRemainder {
-		format = formatFloatWithRemainder
-	}
-	if s.FormatFloat != nil {
-		format = s.FormatFloat
-	}
-	if s.Input.Text == "" {
-		s.Input.Text = format(s.Default)
+	format := s.getFormatFunc()
+	if s.Input.Text == "" || s.Input.Text == "0" {
+		s.Input.SetText(format(s.Slider.Value))
 	}
 	s.Slider.OnChanged = func(f float64) {
 		if s.sliderRecursive {
@@ -92,19 +86,44 @@ func (s *SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 		s.Input.SetText(format(f))
 		s.inputRecursive = false
 	}
+	s.Set(s.Slider.Value, s.DefaultCause, true)
 	return s.Slider, s.Input
 }
 
-func (s *SliderWithTrackedInput) Set(v float64, cause e.ActionCause, notRefresh ...bool) {
+type (
+	SliderInputOptionNotRefresh     struct{}
+	SliderInputOptionOnlyCallAction struct{}
+)
+
+func (s *SliderWithTrackedInput) Set(v float64, cause e.ActionCause, opts ...any) {
+	notRefresh, onlyCallAction := handleSliderInputOpts(opts)
 	if err := s.Action(v, cause); err != nil {
 		s.Handler.HandleError("slider/input action", err)
 		return
 	}
+	if onlyCallAction {
+		return
+	}
 	s.Slider.Value = v
-	if !misc.HasTrueOption(notRefresh) {
+	s.inputRecursive = true
+	s.Input.SetText(s.getFormatFunc()(v))
+	s.inputRecursive = false
+
+	if !notRefresh {
 		s.Slider.Refresh()
 		s.Input.Refresh()
 	}
+}
+
+func (s *SliderWithTrackedInput) getFormatFunc() func(float64) string {
+	format := formatFloatDefault
+	if s.ShowRemainder {
+		format = formatFloatWithRemainder
+	}
+	if s.FormatFloat != nil {
+		format = s.FormatFloat
+	}
+	return format
 }
 
 func formatFloatWithRemainder(f float64) string {
@@ -113,4 +132,16 @@ func formatFloatWithRemainder(f float64) string {
 
 func formatFloatDefault(f float64) string {
 	return fmt.Sprintf("%.0f", f)
+}
+
+func handleSliderInputOpts(x []any) (notRefresh, onlyCallAction bool) {
+	for _, v := range x {
+		switch v.(type) {
+		case SliderInputOptionNotRefresh:
+			notRefresh = true
+		case SliderInputOptionOnlyCallAction:
+			onlyCallAction = true
+		}
+	}
+	return
 }

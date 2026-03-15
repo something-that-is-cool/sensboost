@@ -19,12 +19,12 @@ var ErrClosed = errors.New("closed")
 
 var ErrNotRunning = errors.New("not running")
 
-type ErrStateAlreadyIs struct {
-	State bool
+type ErrValuesIsAlready struct {
+	Value any
 }
 
-func (err ErrStateAlreadyIs) Error() string {
-	return fmt.Sprintf("state already is %t", err.State)
+func (err *ErrValuesIsAlready) Error() string {
+	return fmt.Sprintf("value is already %v", err.Value)
 }
 
 var _ ErrorHandler = (*NopErrorHandler)(nil)

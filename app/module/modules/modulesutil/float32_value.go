@@ -103,11 +103,11 @@ func (m *float32Module) CreateObjects() []fyne.CanvasObject {
 }
 
 // SetValue ...
-func (m *float32Module) SetValue(v float64, cause e.ActionCause) error {
+func (m *float32Module) SetValue(v float64, cause e.ActionCause, opts ...any) error {
 	if mgl64.FloatEqual(m.si.Slider.Value, v) {
 		return fmt.Errorf("value is already %.3f", v)
 	}
-	m.si.Set(v, cause)
+	m.si.Set(v, cause, opts...)
 	return nil
 }
 
@@ -133,7 +133,7 @@ func (m *float32Module) write(val float64) error {
 
 	if m.val.V.notFirst && mgl64.FloatEqual(m.val.V.v, val) {
 		// new value is same as current
-		return fmt.Errorf("new value is same as current (%g)", val)
+		return &e.ErrValuesIsAlready{Value: val}
 	}
 	addr, err := m.resolveAddress()
 	if err != nil {

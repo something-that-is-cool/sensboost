@@ -61,14 +61,14 @@ func (m *sigToggleModule) CreateObjects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{m.toggler.Check}
 }
 
-func (m *sigToggleModule) UpdateState(v bool, cause e.ActionCause) error {
-	if m.toggler.Check.Checked == v {
-		return e.ErrStateAlreadyIs{State: v}
+func (m *sigToggleModule) UpdateState(v bool, cause e.ActionCause, opts ...any) error {
+	if m.State() == v {
+		return &e.ErrValuesIsAlready{Value: v}
 	}
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	m.toggler.Set(v, cause)
+	m.toggler.Set(v, cause, opts...)
 	return nil
 }
 
@@ -96,16 +96,13 @@ func (m *sigToggleModule) lazyToggler(cause e.ActionCause) (*memutil.SignatureNo
 		cause = e.ActionCauseExternal
 	}
 	if t.Enabled() && !m.toggler.Check.Checked {
-		_ = m.UpdateState(true, cause)
+		m.toggler.Check.SetChecked(true)
+		m.toggler.Check.Text = fyneutil.ToggleEnabled
 	}
 	m.t.Store(t)
 	return t, nil
 }
 
 func (m *sigToggleModule) Disable(cause e.ActionCause) {
-	t := m.t.Load()
-	if t == nil || !t.Enabled() {
-		return
-	}
-	_ = m.UpdateState(false, cause)
+	m.HandleError("disable sig toggle module", disableOnlyAction(m, cause))
 }
