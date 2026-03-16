@@ -38,11 +38,11 @@ func (s *SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 	}
 	if s.Slider == nil {
 		s.Slider = widget.NewSlider(s.Min, s.Max)
-		s.Slider.Value = s.Default
 	}
 	if s.Step <= 0 {
 		s.Step = 1.0
 	}
+	s.Slider.Value = s.Default
 	s.Slider.Step = s.Step
 	s.Slider.Min = s.Min
 	s.Slider.Max = s.Max
