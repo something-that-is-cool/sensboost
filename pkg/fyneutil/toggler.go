@@ -15,6 +15,9 @@ type Toggler struct {
 	Action       func(v bool, cause e.ActionCause) error
 	DefaultCause e.ActionCause
 	Check        *widget.Check
+
+	prev *bool
+	rec  bool
 }
 
 func (t *Toggler) Create() *widget.Check {
@@ -34,6 +37,9 @@ func (t *Toggler) Create() *widget.Check {
 	prev := t.Check.OnChanged
 
 	t.Check.OnChanged = func(v bool) {
+		if t.rec {
+			return
+		}
 		if prev != nil {
 			defer prev(v)
 		}
@@ -51,8 +57,12 @@ func (t *Toggler) Set(v bool, cause e.ActionCause, opts ...any) {
 	notRefresh, onlyCallAction := handleTogglerOpts(opts)
 	if err := t.Action(v, cause); err != nil {
 		t.Handler.HandleError("do action", err)
+		if !onlyCallAction {
+			t.actionFail()
+		}
 		return
 	}
+	t.prev = &v
 	if onlyCallAction {
 		return
 	}
@@ -67,6 +77,23 @@ func (t *Toggler) Set(v bool, cause e.ActionCause, opts ...any) {
 		return
 	}
 	t.Check.Refresh()
+}
+
+func (t *Toggler) actionFail() {
+	if t.prev == nil {
+		f := false
+		t.prev = &f
+	}
+	t.rec = true
+	t.Check.Checked = *t.prev
+
+	if *t.prev {
+		t.Check.Text = ToggleEnabled
+	} else {
+		t.Check.Text = ToggleDisabled
+	}
+	t.Check.Refresh()
+	t.rec = false
 }
 
 func handleTogglerOpts(x []any) (notRefresh, onlyCallAction bool) {

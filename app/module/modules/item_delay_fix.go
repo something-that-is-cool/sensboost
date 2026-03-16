@@ -62,7 +62,7 @@ func (*itemDelayFix) Name() string {
 
 // Description ...
 func (*itemDelayFix) Description() string {
-	return "..."
+	return "removes attack use delay of 200 ms"
 }
 
 // Edit ...

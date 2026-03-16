@@ -24,6 +24,7 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 
 func (app *App) createControllerSensitivityModule(proc *win.Process) module.Config {
 	conf := &modules.ControllerSensitivity{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
 	conf.OnValueChanged = onModuleValueChanged[float64](app, conf.Identifier())
 	return conf
 }

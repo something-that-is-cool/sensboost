@@ -59,10 +59,9 @@ func (conf Int32PointerNopSigToggle) New() (_ ToggleableModuleWithValue[int32], 
 			if err := i.toggler.Set(v); err != nil {
 				return fmt.Errorf("set toggler: %w", err)
 			}
-			i.writeValue(int32(i.si.Slider.Value), func() {
+			return i.writeValue(int32(i.si.Slider.Value), func() {
 				conf.OnStateChanged(v, cause)
 			})
-			return nil
 		},
 	}
 	i.check.Create()
@@ -72,10 +71,9 @@ func (conf Int32PointerNopSigToggle) New() (_ ToggleableModuleWithValue[int32], 
 		Default: float64(conf.Default),
 		Action: func(newVal float64, cause e.ActionCause) error {
 			v := int32(math.Ceil(newVal))
-			i.writeValue(v, func() {
+			return i.writeValue(v, func() {
 				conf.OnValueChanged(v, cause)
 			})
-			return nil
 		},
 	}
 	i.si.Create()
@@ -146,21 +144,20 @@ func (i *int32PointerNopSigToggle) Disable(cause e.ActionCause) {
 
 //todo: write only when module enables
 
-func (i *int32PointerNopSigToggle) writeValue(v int32, after ...func()) {
+func (i *int32PointerNopSigToggle) writeValue(v int32, after ...func()) error {
 	addr, err := i.lazyAddress()
 	if err != nil {
-		i.HandleError("lazy get (resolve) ptr address", err)
-		return
+		return fmt.Errorf("lazy get (resolve) ptr address: %w", err)
 	}
 	err = mem.WriteMemory[int32](i.proc, addr, v)
 	if err != nil {
 		i.addr = 0 //force recalculate address
-		i.HandleError(fmt.Sprintf("write to pointer %d", v), err)
-		return
+		return fmt.Errorf("write %d to time pointer: %w", v, err)
 	}
 	for _, fn := range after {
 		fn()
 	}
+	return nil
 }
 
 func (i *int32PointerNopSigToggle) lazyAddress() (uintptr, error) {
