@@ -5,10 +5,6 @@ import (
 	"fmt"
 )
 
-type ErrorHandler interface {
-	HandleError(source string, err error)
-}
-
 var ErrAlreadyRunning = errors.New("already running")
 
 var ErrAlreadyInitialized = errors.New("already initialized")
@@ -26,9 +22,3 @@ type ErrValuesIsAlready struct {
 func (err *ErrValuesIsAlready) Error() string {
 	return fmt.Sprintf("value is already %v", err.Value)
 }
-
-var _ ErrorHandler = (*NopErrorHandler)(nil)
-
-type NopErrorHandler struct{}
-
-func (NopErrorHandler) HandleError(string, error) {}
