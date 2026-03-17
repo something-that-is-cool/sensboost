@@ -58,7 +58,7 @@ func (t *Toggler) Set(v bool, cause e.ActionCause, opts ...any) {
 	if err := t.Action(v, cause); err != nil {
 		t.Handler.HandleError("do action", err)
 		if !onlyCallAction {
-			t.actionFail()
+			t.actionFail(notRefresh)
 		}
 		return
 	}
@@ -79,7 +79,7 @@ func (t *Toggler) Set(v bool, cause e.ActionCause, opts ...any) {
 	t.Check.Refresh()
 }
 
-func (t *Toggler) actionFail() {
+func (t *Toggler) actionFail(notRefresh bool) {
 	if t.prev == nil {
 		t.prev = new(bool) //false
 	}
@@ -91,7 +91,9 @@ func (t *Toggler) actionFail() {
 	} else {
 		t.Check.Text = ToggleDisabled
 	}
-	t.Check.Refresh()
+	if !notRefresh {
+		t.Check.Refresh()
+	}
 	t.rec = false
 }
 
