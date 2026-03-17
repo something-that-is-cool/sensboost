@@ -81,8 +81,7 @@ func (t *Toggler) Set(v bool, cause e.ActionCause, opts ...any) {
 
 func (t *Toggler) actionFail() {
 	if t.prev == nil {
-		f := false
-		t.prev = &f
+		t.prev = new(bool) //false
 	}
 	t.rec = true
 	t.Check.Checked = *t.prev
