@@ -116,13 +116,14 @@ func (s *SliderWithTrackedInput) Set(v float64, cause e.ActionCause, opts ...any
 }
 
 func (s *SliderWithTrackedInput) getFormatFunc() func(float64) string {
+	if s.FormatFloat != nil {
+		return s.FormatFloat
+	}
 	format := formatFloatDefault
 	if s.ShowRemainder {
 		format = formatFloatWithRemainder
 	}
-	if s.FormatFloat != nil {
-		format = s.FormatFloat
-	}
+	s.FormatFloat = format
 	return format
 }
 
