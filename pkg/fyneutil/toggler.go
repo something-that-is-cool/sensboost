@@ -43,7 +43,7 @@ func (t *Toggler) Create() *widget.Check {
 		if prev != nil {
 			defer prev(v)
 		}
-		t.Set(v, t.DefaultCause, true)
+		t.Set(v, t.DefaultCause, TogglerOptionNotRefresh{})
 	}
 	return t.Check
 }

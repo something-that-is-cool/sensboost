@@ -66,7 +66,7 @@ func (s *SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 		if s.sliderRecursive {
 			return
 		}
-		s.Set(f, s.DefaultCause, true)
+		s.Set(f, s.DefaultCause, SliderInputOptionNotRefresh{})
 		s.previousSlider = f
 	}
 	s.Input.OnChanged = func(str string) {
@@ -77,7 +77,7 @@ func (s *SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 		if err != nil || (err == nil && (f < s.Min || f > s.Max)) {
 			f = s.Slider.Value
 		} else {
-			s.Set(f, s.DefaultCause, true)
+			s.Set(f, s.DefaultCause, SliderInputOptionNotRefresh{})
 		}
 		s.previousInput = str
 		// must make input instead of slider recursive here so slider can call handler
@@ -86,7 +86,7 @@ func (s *SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 		s.Input.SetText(format(f))
 		s.inputRecursive = false
 	}
-	s.Set(s.Slider.Value, s.DefaultCause, true)
+	s.Set(s.Slider.Value, s.DefaultCause)
 	return s.Slider, s.Input
 }
 
