@@ -14,7 +14,7 @@ import (
 var controllerSensitivityPtr = modulesutil.PointerSettings{
 	BaseAddress: 0x019209F0,
 	Offsets:     []uintptr{0x10, 0x8, 0x8, 0x8, 0x28, 0xB0, 0x68, 0x14},
-}
+} //todo: maybe parse ptr from string
 
 var _ module.Config = (*ControllerSensitivity)(nil)
 
