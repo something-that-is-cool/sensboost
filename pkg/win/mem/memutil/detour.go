@@ -1,4 +1,4 @@
-package mem
+package memutil
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/asm"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 type Detour struct {
@@ -61,7 +62,7 @@ func (d *Detour) EnableWithCode(userCode []byte) (err error) {
 	jmpBack := asm.Jmp(d.data.V.cave+uintptr(len(finalPayload)), retAddr)
 	finalPayload = append(finalPayload, jmpBack...)
 
-	if err := Patch(d.proc, d.data.V.cave, finalPayload); err != nil {
+	if err := mem.Patch(d.proc, d.data.V.cave, finalPayload); err != nil {
 		return fmt.Errorf("patch cave failed: %w", err)
 	}
 	if err := d.applyTargetPatch(); err != nil {
@@ -75,11 +76,11 @@ func (d *Detour) init() (err error) {
 	if d.data.V.init {
 		return e.ErrAlreadyInitialized
 	}
-	d.data.V.origBytes, err = ReadBytes(d.proc, d.data.V.target, d.data.V.size)
+	d.data.V.origBytes, err = mem.ReadBytes(d.proc, d.data.V.target, d.data.V.size)
 	if err != nil {
 		return fmt.Errorf("read target: %w", err)
 	}
-	d.data.V.cave, err = AllocNear(d.proc, d.data.V.target, 1024)
+	d.data.V.cave, err = mem.AllocNear(d.proc, d.data.V.target, 1024)
 	if err != nil {
 		return fmt.Errorf("alloc cave near failed: %w", err)
 	}
@@ -101,13 +102,13 @@ func (d *Detour) applyTargetPatch() error {
 	}
 	payload := asm.Jmp(d.data.V.target, d.data.V.cave)
 	if uint(len(payload)) < d.data.V.size {
-		payload = append(payload, NopBytes(int(d.data.V.size)-len(payload))...)
+		payload = append(payload, mem.NopBytes(int(d.data.V.size)-len(payload))...)
 	}
-	return Patch(d.proc, d.data.V.target, payload)
+	return mem.Patch(d.proc, d.data.V.target, payload)
 }
 
 func (d *Detour) writeCaveCode() error {
-	userCode, err := ReadBytes(d.proc, d.data.V.dest, 64)
+	userCode, err := mem.ReadBytes(d.proc, d.data.V.dest, 64)
 	if err != nil {
 		return fmt.Errorf("read user code: %w", err)
 	}
@@ -118,7 +119,7 @@ func (d *Detour) writeCaveCode() error {
 	jmpBack := asm.Jmp(d.data.V.cave+uintptr(len(code)), returnAddr)
 
 	code = append(code, jmpBack...)
-	return Patch(d.proc, d.data.V.cave, code)
+	return mem.Patch(d.proc, d.data.V.cave, code)
 }
 
 func (d *Detour) Disable() error {
@@ -128,10 +129,10 @@ func (d *Detour) Disable() error {
 	if !d.data.V.init {
 		return nil
 	}
-	if err := Patch(d.proc, d.data.V.target, d.data.V.origBytes); err != nil {
+	if err := mem.Patch(d.proc, d.data.V.target, d.data.V.origBytes); err != nil {
 		return fmt.Errorf("restore original: %w", err)
 	}
-	_, err := Unalloc(d.proc, d.data.V.cave)
+	_, err := mem.Unalloc(d.proc, d.data.V.cave)
 	d.data.V.init = false
 	return err
 }
