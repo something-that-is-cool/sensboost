@@ -1,12 +1,10 @@
-package mem
+package asm
 
 import "encoding/binary"
 
-type asmMethods struct{}
+//todo: impl builder
 
-var Asm asmMethods
-
-func (asmMethods) Jmp(from, to uintptr) []byte {
+func Jmp(from, to uintptr) []byte {
 	offset := int32(to - (from + 5))
 	res := make([]byte, 5)
 	res[0] = 0xE9
@@ -14,7 +12,7 @@ func (asmMethods) Jmp(from, to uintptr) []byte {
 	return res
 }
 
-func (asmMethods) MovRaxAbs(address uintptr) []byte {
+func MovRaxAbs(address uintptr) []byte {
 	res := make([]byte, 10)
 	res[0] = 0x48
 	res[1] = 0xA3
@@ -22,14 +20,14 @@ func (asmMethods) MovRaxAbs(address uintptr) []byte {
 	return res
 }
 
-func (asmMethods) MovEaxAbs(address uintptr) []byte {
+func MovEaxAbs(address uintptr) []byte {
 	res := make([]byte, 5)
 	res[0] = 0xA3
 	binary.LittleEndian.PutUint32(res[1:], uint32(address))
 	return res
 }
 
-func (asmMethods) LeaR13(offset uint32) []byte {
+func LeaR13(offset uint32) []byte {
 	res := make([]byte, 7)
 	res[0] = 0x49
 	res[1] = 0x8D
@@ -38,7 +36,7 @@ func (asmMethods) LeaR13(offset uint32) []byte {
 	return res
 }
 
-func (asmMethods) MovRax64(address uintptr) []byte {
+func MovRax64(address uintptr) []byte {
 	res := make([]byte, 10)
 	res[0] = 0x48
 	res[1] = 0xB8
@@ -46,27 +44,27 @@ func (asmMethods) MovRax64(address uintptr) []byte {
 	return res
 }
 
-func (asmMethods) PushRax() byte {
+func PushRax() byte {
 	return 0x50
 }
 
-func (asmMethods) PopRax() byte {
+func PopRax() byte {
 	return 0x58
 }
 
-func (asmMethods) Pushfq() byte {
+func Pushfq() byte {
 	return 0x9C
 }
 
-func (asmMethods) Popfq() byte {
+func Popfq() byte {
 	return 0x9D
 }
 
-func (asmMethods) MovssXmm0Rax() []byte {
+func MovssXmm0Rax() []byte {
 	return []byte{0xF3, 0x0F, 0x10, 0x00}
 }
 
-func (asmMethods) MovssXmmToRax(xmmIndex byte) []byte {
+func MovssXmmToRax(xmmIndex byte) []byte {
 	if xmmIndex <= 7 {
 		return []byte{0xF3, 0x0F, 0x11, xmmIndex << 3}
 	}

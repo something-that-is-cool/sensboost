@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/something-that-is-cool/zutil/internal/misc"
+	"github.com/something-that-is-cool/zutil/pkg/asm"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 )
@@ -57,7 +58,7 @@ func (d *Detour) EnableWithCode(userCode []byte) (err error) {
 	finalPayload := append([]byte(nil), userCode...)
 	finalPayload = append(finalPayload, d.data.V.origBytes...)
 	retAddr := d.data.V.target + uintptr(d.data.V.size)
-	jmpBack := Asm.Jmp(d.data.V.cave+uintptr(len(finalPayload)), retAddr)
+	jmpBack := asm.Jmp(d.data.V.cave+uintptr(len(finalPayload)), retAddr)
 	finalPayload = append(finalPayload, jmpBack...)
 
 	if err := Patch(d.proc, d.data.V.cave, finalPayload); err != nil {
@@ -86,10 +87,10 @@ func (d *Detour) init() (err error) {
 }
 
 func (d *Detour) EnableProxy(proxyAddr uintptr, xmmIndex byte) error {
-	shell := append([]byte(nil), Asm.Pushfq(), Asm.PushRax())
-	shell = append(shell, Asm.MovRax64(proxyAddr)...)
-	shell = append(shell, Asm.MovssXmmToRax(xmmIndex)...)
-	shell = append(shell, Asm.PopRax(), Asm.Popfq())
+	shell := append([]byte(nil), asm.Pushfq(), asm.PushRax())
+	shell = append(shell, asm.MovRax64(proxyAddr)...)
+	shell = append(shell, asm.MovssXmmToRax(xmmIndex)...)
+	shell = append(shell, asm.PopRax(), asm.Popfq())
 	return d.EnableWithCode(shell)
 }
 
@@ -98,7 +99,7 @@ func (d *Detour) applyTargetPatch() error {
 	if dist < math.MinInt32 || dist > math.MaxInt32 {
 		return fmt.Errorf("cave out of range for relative jump (dist: %d bytes)", dist)
 	}
-	payload := Asm.Jmp(d.data.V.target, d.data.V.cave)
+	payload := asm.Jmp(d.data.V.target, d.data.V.cave)
 	if uint(len(payload)) < d.data.V.size {
 		payload = append(payload, NopBytes(int(d.data.V.size)-len(payload))...)
 	}
@@ -114,7 +115,7 @@ func (d *Detour) writeCaveCode() error {
 	code = append(code, userCode...)
 
 	returnAddr := d.data.V.target + uintptr(d.data.V.size)
-	jmpBack := Asm.Jmp(d.data.V.cave+uintptr(len(code)), returnAddr)
+	jmpBack := asm.Jmp(d.data.V.cave+uintptr(len(code)), returnAddr)
 
 	code = append(code, jmpBack...)
 	return Patch(d.proc, d.data.V.cave, code)
