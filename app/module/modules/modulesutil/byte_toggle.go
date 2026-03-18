@@ -90,7 +90,7 @@ func (m *byteToggleModule) lazyToggler() (*memutil.ByteToggler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("scan sig: %w", err)
 	}
-	original := m.sig.Original
+	original := m.sig.Original.Data
 	if original == nil {
 		original = m.sig.Signature.Data
 	}

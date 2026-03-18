@@ -35,6 +35,7 @@ type ToggleableModuleWithValue[T any] interface {
 type SignatureSettings struct {
 	Signature mem.Signature
 	Patch     mem.Signature //optional for nop sig toggler
-	Original  []byte        //optional
-	Offset    uintptr
+
+	Original mem.Signature //optional
+	Offset   uintptr       //optional
 }
