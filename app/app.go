@@ -40,8 +40,9 @@ type App struct {
 	userConf misc.ValueWithMutex[*UserConfig]
 
 	data misc.ValueWithMutex[struct {
-		started, init bool
-		modules       *modulesMap
+		started, init          bool
+		uConfInit, modulesInit bool
+		modules                *modulesMap
 	}]
 }
 
@@ -57,6 +58,7 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 		app.userConf.Unlock()
 		return fmt.Errorf("load user config: %w", err)
 	}
+	app.data.V.uConfInit = true
 	app.syncTheme(app.userConf.V)
 	app.userConf.Unlock()
 
@@ -73,6 +75,7 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 		app.conf.Logger.Error("error creating modules from configs", "err", err.Error())
 	}
 	app.data.V.modules = modules
+	app.data.V.modulesInit = true
 
 	// create hotkey manager after modules initialized !!!!!
 	app.userConf.Lock()
@@ -110,14 +113,27 @@ func (app *App) Run() error {
 	if app.closed.Load() {
 		return e.ErrClosed
 	}
+	done, err := app.run()
+	if err != nil {
+		return err
+	}
+	app.conf.Logger.Info("running window...")
+	app.win.ShowAndRun() // blocks
+	close(done)
+	// wait for graceful window closure...
+	app.conf.Logger.Info("window closed gracefully.")
+	return nil
+}
+
+func (app *App) run() (chan struct{}, error) {
 	app.data.Lock()
+	defer app.data.Unlock()
+
 	if app.data.V.started {
-		app.data.Unlock()
-		return e.ErrAlreadyRunning
+		return nil, e.ErrAlreadyRunning
 	}
 	if err := app.initUnsafe(app.tr.Process()); err != nil {
-		app.data.Unlock()
-		return fmt.Errorf("init: %w", err)
+		return nil, fmt.Errorf("init: %w", err)
 	}
 	done := make(chan struct{})
 	go func() {
@@ -130,16 +146,8 @@ func (app *App) Run() error {
 		}
 	}()
 	app.runBackgroundTasks()
-
 	app.data.V.started = true
-	app.data.Unlock()
-
-	app.conf.Logger.Info("running window...")
-	app.win.ShowAndRun() // blocks
-	close(done)
-	// wait for graceful window closure...
-	app.conf.Logger.Info("window closed gracefully.")
-	return nil
+	return done, nil
 }
 
 func (app *App) runBackgroundTasks() {
@@ -211,14 +219,13 @@ func (app *App) closeIfStarted(cause e.CloseCause) {
 		app.cancel()
 		app.tr.Close()
 	}()
-	if !app.data.V.started {
-		return
+	if app.data.V.uConfInit {
+		// save the user config
+		app.saveUserConfig(app.app)
 	}
-	// save the user config
-	app.saveUserConfig(app.app)
 	// if closed because parent process closed, we don't need to disable
 	// all modules as it will not affect
-	if !e.CloseCauseIs(cause, closeCauseTrackerClosed) {
+	if app.data.V.modulesInit && !e.CloseCauseIs(cause, closeCauseTrackerClosed) {
 		// disable all modules before canceling context
 		// if we will not do this any logic that takes our context can end
 		// earlier so it won't disable modules properly
