@@ -19,6 +19,6 @@ type ErrValuesIsAlready struct {
 	Value any
 }
 
-func (err *ErrValuesIsAlready) Error() string {
+func (err ErrValuesIsAlready) Error() string {
 	return fmt.Sprintf("value is already %v", err.Value)
 }

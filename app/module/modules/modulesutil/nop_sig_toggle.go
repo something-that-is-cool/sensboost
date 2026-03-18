@@ -63,7 +63,7 @@ func (m *sigToggleModule) CreateObjects() []fyne.CanvasObject {
 
 func (m *sigToggleModule) UpdateState(v bool, cause e.ActionCause, opts ...any) error {
 	if m.State() == v {
-		return &e.ErrValuesIsAlready{Value: v}
+		return e.ErrValuesIsAlready{Value: v}
 	}
 	if cause == nil {
 		cause = e.ActionCauseExternal

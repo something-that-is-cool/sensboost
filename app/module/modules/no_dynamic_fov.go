@@ -2,6 +2,7 @@ package modules
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
@@ -111,6 +112,10 @@ func (m *fovClamper) lazyAddress() (uintptr, bool) {
 	}
 	addr, err := mem.ResolvePointerAddress(m.proc, fovPtr)
 	if err != nil {
+		if strings.Contains(err.Error(), "Only part of a ReadProcessMemory or WriteProcessMemory request was completed") {
+			//fixme: hack: prevent error logs when player is not in world
+			return 0, false
+		}
 		m.err(fmt.Errorf("resolve fov ptr addr: %w", err))
 		return 0, false
 	}

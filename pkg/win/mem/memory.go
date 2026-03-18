@@ -97,18 +97,18 @@ func Patch(p *win.Process, addr uintptr, b []byte) error {
 const sigChunkSize = 1024 * 1024 * 1 // 1 mb
 
 func ScanSignature(proc *win.Process, sig Signature) (uintptr, error) {
-	modBase, modSize, err := proc.GetModuleInfo()
+	mod, err := proc.GetModuleInfo()
 	if err != nil {
 		return 0, fmt.Errorf("get module info: %w", err)
 	}
 	buffer := make([]byte, sigChunkSize)
 
-	for offset := uintptr(0); offset < modSize; {
+	for offset := uintptr(0); offset < mod.Size; {
 		toRead := uintptr(sigChunkSize)
-		if offset+sigChunkSize > modSize {
-			toRead = modSize - offset
+		if offset+sigChunkSize > mod.Size {
+			toRead = mod.Size - offset
 		}
-		readable, regionRemaining := RegionInfo(proc.Handle, modBase+offset)
+		readable, regionRemaining := RegionInfo(proc.Handle, mod.Address+offset)
 		if !readable {
 			offset += regionRemaining
 			continue
@@ -117,12 +117,18 @@ func ScanSignature(proc *win.Process, sig Signature) (uintptr, error) {
 			toRead = regionRemaining
 		}
 		var bytesRead uintptr
-		if err := w.ReadProcessMemory(proc.Handle, modBase+offset, &buffer[0], toRead, &bytesRead); err != nil || bytesRead < uintptr(len(sig.Data)) {
+		if err := w.ReadProcessMemory(
+			proc.Handle,
+			mod.Address+offset,
+			&buffer[0],
+			toRead,
+			&bytesRead,
+		); err != nil || bytesRead < uintptr(len(sig.Data)) {
 			offset += toRead
 			continue
 		}
 		if foundOffset, ok := findInChunk(buffer[:bytesRead], sig); ok {
-			return modBase + offset + uintptr(foundOffset), nil
+			return mod.Address + offset + uintptr(foundOffset), nil
 		}
 		offset += toRead - uintptr(len(sig.Data)) + 1
 	}

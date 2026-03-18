@@ -57,13 +57,13 @@ func ResolvePointerValue[T any](proc *win.Process, ptr Pointer, opts ...any) (T,
 }
 
 func ResolvePointerAddress(proc *win.Process, ptr Pointer, opts ...any) (uintptr, error) {
-	mod, _, err := proc.GetModuleInfo()
+	mod, err := proc.GetModuleInfo()
 	if err != nil {
 		return 0, fmt.Errorf("get proc module info: %w", err)
 	}
 	finalAddr := ptr.BaseAddress
 	if subModule, _ := handleOptions(opts); !subModule {
-		finalAddr += mod
+		finalAddr += mod.Address
 	}
 	addr, err := ReadMemory[uintptr](proc, finalAddr, opts...)
 	if err != nil {

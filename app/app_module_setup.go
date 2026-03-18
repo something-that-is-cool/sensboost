@@ -72,7 +72,7 @@ func (app *App) createItemDelayFixModule(proc *win.Process) module.Config {
 
 func (app *App) onError(mod string) func(err error) {
 	return func(err error) {
-		if errors.As(err, new(*e.ErrValuesIsAlready)) {
+		if errors.As(err, new(e.ErrValuesIsAlready)) {
 			return
 		}
 		app.conf.Logger.Error("an error occurred", "module", mod, "err", err.Error())
