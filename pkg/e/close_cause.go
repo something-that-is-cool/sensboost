@@ -4,13 +4,13 @@ import "errors"
 
 type CloseCause interface {
 	error
-	closeCause()
+	CloseCause()
 }
 
 type closeCause struct{ e error }
 
 func (c closeCause) Error() string { return c.e.Error() }
-func (closeCause) closeCause()     {}
+func (closeCause) CloseCause()     {}
 
 func NewCloseCause(err error) CloseCause {
 	return closeCause{e: err}

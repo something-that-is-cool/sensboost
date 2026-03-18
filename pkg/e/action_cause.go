@@ -4,13 +4,13 @@ import "fmt"
 
 type ActionCause interface {
 	fmt.Stringer
-	actionCause()
+	ActionCause()
 }
 
 type actionCause struct{ string }
 
 func (a actionCause) String() string { return a.string }
-func (actionCause) actionCause()     {}
+func (actionCause) ActionCause()     {}
 
 func NewActionCause(str string) ActionCause {
 	return actionCause{string: str}
