@@ -79,6 +79,30 @@ func (proc *Process) GetModuleInfo() (uintptr, uintptr, error) {
 	return 0, 0, errors.New("no such module")
 }
 
+func (proc *Process) GetModule(name string) (uintptr, uintptr, error) {
+	snapshot, err := w.CreateToolhelp32Snapshot(w.TH32CS_SNAPMODULE|w.TH32CS_SNAPMODULE32, proc.PID)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer w.CloseHandle(snapshot)
+
+	var me w.ModuleEntry32
+	me.Size = uint32(unsafe.Sizeof(me))
+
+	if err = w.Module32First(snapshot, &me); err != nil {
+		return 0, 0, err
+	}
+	for {
+		if w.UTF16ToString(me.Module[:]) == name {
+			return me.ModBaseAddr, uintptr(me.ModBaseSize), nil
+		}
+		if err = w.Module32Next(snapshot, &me); err != nil {
+			break
+		}
+	}
+	return 0, 0, fmt.Errorf("module %q not found", name)
+}
+
 const StillActive = 259
 
 func (proc *Process) Active() bool {
