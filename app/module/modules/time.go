@@ -11,15 +11,13 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var (
-	timePtr = modulesutil.PointerSettings{
-		BaseAddress: 0x01921888,
-		Offsets:     []uintptr{0x10, 0x58, 0x58, 0xD8, 0x0, 0x38, 0x194},
-	}
-	disableTimeSig = modulesutil.SignatureSettings{
-		Signature: mem.MustParseSignature("41 89 89 94 01 00 00"),
-	}
+var timePtr = mem.MustParsePointer(
+	"01921888",
+	"10 58 58 D8 0 38 194",
 )
+var disableTimeSig = modulesutil.SignatureSettings{
+	Signature: mem.MustParseSignature("41 89 89 94 01 00 00"),
+}
 
 var _ module.Config = (*Time)(nil)
 

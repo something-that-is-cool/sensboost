@@ -22,7 +22,7 @@ type Float32Module struct { // so float64 would be DoublePointerModule
 	SliderToMemory func(float64) float32
 	MemoryToSlider func(float32) float64
 
-	Ptr            PointerSettings
+	Ptr            mem.Pointer
 	FinalAddress   uintptr
 	ResolveAddress func() (uintptr, error)
 
@@ -84,7 +84,7 @@ type float32Module struct {
 
 	min, max, def float64
 
-	ptr PointerSettings
+	ptr mem.Pointer
 
 	si *fyneutil.SliderWithTrackedInput
 
@@ -184,7 +184,7 @@ func (m *float32Module) resolveAddress() (uintptr, error) {
 		m.a = a
 		return a, nil
 	}
-	addr, err := mem.ResolvePointerAddress(m.proc, m.ptr.BaseAddress, m.ptr.Offsets)
+	addr, err := mem.ResolvePointerAddress(m.proc, m.ptr)
 	if err != nil {
 		return 0, err
 	}

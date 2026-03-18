@@ -70,7 +70,7 @@ func (proc *Process) GetModuleInfo() (uintptr, uintptr, error) {
 	}
 	for {
 		if w.UTF16ToString(me.Module[:]) == proc.Name {
-			return me.ModBaseAddr, uintptr(me.ModBaseSize), nil // Возвращаем адрес и размер
+			return me.ModBaseAddr, uintptr(me.ModBaseSize), nil
 		}
 		if err = w.Module32Next(snapshot, &me); err != nil {
 			break

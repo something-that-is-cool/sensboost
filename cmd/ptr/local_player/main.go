@@ -7,9 +7,9 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var (
-	baseAddr uintptr = 0x01921DF8
-	offsets          = []uintptr{0x30, 0x78, 0x28, 0x58, 0x0}
+var ptr = mem.MustParsePointer(
+	"01921DF8",
+	"30 78 28 58 0",
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 	}
 	defer proc.Close() //nolint:errcheck
 
-	v, finalAddr, err := mem.ResolvePointerValue[int64](proc, baseAddr, offsets)
+	v, finalAddr, err := mem.ResolvePointerValue[int64](proc, ptr)
 	if err != nil {
 		panic(fmt.Errorf("resolve pointer value: %w", err))
 	}

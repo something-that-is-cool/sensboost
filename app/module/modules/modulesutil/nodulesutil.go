@@ -32,11 +32,6 @@ type ToggleableModuleWithValue[T any] interface {
 	Value() (T, bool)
 }
 
-type PointerSettings struct {
-	BaseAddress uintptr
-	Offsets     []uintptr
-}
-
 type SignatureSettings struct {
 	Signature mem.Signature
 	Patch     mem.Signature //optional for nop sig toggler

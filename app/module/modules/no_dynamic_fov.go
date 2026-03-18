@@ -13,10 +13,10 @@ import (
 var noDynamicFovSig = modulesutil.SignatureSettings{
 	Signature: mem.MustParseSignature("F3 0F 11 83 78 12 00 00"),
 }
-var fovPtr = modulesutil.PointerSettings{
-	BaseAddress: 0x01921DF8, //+module
-	Offsets:     []uintptr{0x30, 0xD8, 0x20, 0xBE0},
-}
+var fovPtr = mem.MustParsePointer(
+	"01921DF8", //+module
+	"30 D8 20 BE0",
+)
 
 var _ module.Config = (*NoDynamicFov)(nil)
 
@@ -109,7 +109,7 @@ func (m *fovClamper) lazyAddress() (uintptr, bool) {
 	if m.addr != 0 {
 		return m.addr, true
 	}
-	addr, err := mem.ResolvePointerAddress(m.proc, fovPtr.BaseAddress, fovPtr.Offsets)
+	addr, err := mem.ResolvePointerAddress(m.proc, fovPtr)
 	if err != nil {
 		m.err(fmt.Errorf("resolve fov ptr addr: %w", err))
 		return 0, false

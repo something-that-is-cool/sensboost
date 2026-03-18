@@ -9,12 +9,13 @@ import (
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var controllerSensitivityPtr = modulesutil.PointerSettings{
-	BaseAddress: 0x019209F0,
-	Offsets:     []uintptr{0x10, 0x8, 0x8, 0x8, 0x28, 0xB0, 0x68, 0x14},
-} //todo: maybe parse ptr from string
+var controllerSensitivityPtr = mem.MustParsePointer(
+	"019209F0",
+	"10 8 8 8 28 B0 68 14",
+)
 
 var _ module.Config = (*ControllerSensitivity)(nil)
 

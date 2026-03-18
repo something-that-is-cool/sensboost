@@ -14,7 +14,7 @@ import (
 )
 
 type Int32PointerNopSigToggle struct {
-	Ptr PointerSettings
+	Ptr mem.Pointer
 	Sig SignatureSettings
 
 	FinalAddr      uintptr
@@ -85,7 +85,7 @@ var _ ToggleableModuleWithValue[int32] = (*int32PointerNopSigToggle)(nil)
 type int32PointerNopSigToggle struct {
 	e.ErrorHandler
 
-	p PointerSettings
+	p mem.Pointer
 	s SignatureSettings
 
 	proc *win.Process
@@ -172,14 +172,10 @@ func (i *int32PointerNopSigToggle) lazyAddress() (uintptr, error) {
 		i.addr = a
 		return a, nil
 	}
-	addr, err := i.resolveAddress()
+	addr, err := mem.ResolvePointerAddress(i.proc, i.p)
 	if err != nil {
 		return 0, fmt.Errorf("resolve pointer address: %w", err)
 	}
 	i.addr = addr
 	return addr, nil
-}
-
-func (i *int32PointerNopSigToggle) resolveAddress() (uintptr, error) {
-	return mem.ResolvePointerAddress(i.proc, i.p.BaseAddress, i.p.Offsets)
 }

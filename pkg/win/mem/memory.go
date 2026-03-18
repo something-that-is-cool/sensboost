@@ -77,41 +77,6 @@ func ReadBytes(p *win.Process, addr uintptr, size uint, opts ...any) ([]byte, er
 	return buf, nil
 }
 
-func ResolvePointerValue[T any](proc *win.Process, baseAddr uintptr, offsets []uintptr, opts ...any) (T, uintptr, error) {
-	var zero T
-	finalAddr, err := ResolvePointerAddress(proc, baseAddr, offsets, opts...)
-	if err != nil {
-		return zero, 0, fmt.Errorf("resolve pointer address: %w", err)
-	}
-	val, err := ReadMemory[T](proc, finalAddr, opts...)
-	if err != nil {
-		return zero, 0, fmt.Errorf("read final value: %w", err)
-	}
-	return val, finalAddr, nil
-}
-
-func ResolvePointerAddress(proc *win.Process, baseAddr uintptr, offsets []uintptr, opts ...any) (uintptr, error) {
-	mod, _, err := proc.GetModuleInfo()
-	if err != nil {
-		return 0, fmt.Errorf("get proc module info: %w", err)
-	}
-	finalAddr := baseAddr
-	if subModule, _ := handleOptions(opts); !subModule {
-		finalAddr += mod
-	}
-	addr, err := ReadMemory[uintptr](proc, finalAddr, opts...)
-	if err != nil {
-		return 0, fmt.Errorf("read base addr: %w", err)
-	}
-	for i := 0; i < len(offsets)-1; i++ {
-		addr, err = ReadMemory[uintptr](proc, addr+offsets[i], opts...)
-		if err != nil {
-			return 0, fmt.Errorf("read offset at step %d: %w", i, err)
-		}
-	}
-	return addr + offsets[len(offsets)-1], nil
-}
-
 func Patch(p *win.Process, addr uintptr, b []byte) error {
 	if len(b) == 0 {
 		return errors.New("empty slice")
@@ -136,7 +101,6 @@ func ScanSignature(proc *win.Process, sig Signature) (uintptr, error) {
 		return 0, fmt.Errorf("get module info: %w", err)
 	}
 	buffer := make([]byte, sigChunkSize)
-	sigLen := len(sig.Data)
 
 	for offset := uintptr(0); offset < modSize; {
 		toRead := uintptr(sigChunkSize)
@@ -144,14 +108,14 @@ func ScanSignature(proc *win.Process, sig Signature) (uintptr, error) {
 			toRead = modSize - offset
 		}
 		var bytesRead uintptr
-		if err := w.ReadProcessMemory(proc.Handle, modBase+offset, &buffer[0], toRead, &bytesRead); err != nil || bytesRead < uintptr(sigLen) {
+		if err := w.ReadProcessMemory(proc.Handle, modBase+offset, &buffer[0], toRead, &bytesRead); err != nil || bytesRead < uintptr(len(sig.Data)) {
 			offset += toRead
 			continue
 		}
 		if foundOffset, ok := findInChunk(buffer[:bytesRead], sig); ok {
 			return modBase + offset + uintptr(foundOffset), nil
 		}
-		offset += toRead - uintptr(sigLen) + 1
+		offset += toRead - uintptr(len(sig.Data)) + 1
 	}
 	return 0, errors.New("signature not found")
 }
