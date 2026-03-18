@@ -76,10 +76,6 @@ func (app *App) saveUserConfig(a fyne.App) {
 	app.userConf.Lock()
 	defer app.userConf.Unlock()
 
-	if app.userConf.V == nil {
-		// can happen because Close called concurrently
-		return
-	}
 	if err := app.writeConfig(app.userConf.V, path); err != nil {
 		app.conf.Logger.Error("cannot save config", "err", err.Error(), "path", path)
 		return
