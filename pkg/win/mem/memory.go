@@ -4,6 +4,7 @@
 package mem
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"unsafe"
@@ -107,6 +108,14 @@ func ScanSignature(proc *win.Process, sig Signature) (uintptr, error) {
 		if offset+sigChunkSize > modSize {
 			toRead = modSize - offset
 		}
+		readable, regionRemaining := RegionInfo(proc.Handle, modBase+offset)
+		if !readable {
+			offset += regionRemaining
+			continue
+		}
+		if toRead > regionRemaining {
+			toRead = regionRemaining
+		}
 		var bytesRead uintptr
 		if err := w.ReadProcessMemory(proc.Handle, modBase+offset, &buffer[0], toRead, &bytesRead); err != nil || bytesRead < uintptr(len(sig.Data)) {
 			offset += toRead
@@ -120,19 +129,41 @@ func ScanSignature(proc *win.Process, sig Signature) (uintptr, error) {
 	return 0, errors.New("signature not found")
 }
 
-func NopBytes(size int) []byte {
-	res := make([]byte, 0, size)
-	for range size {
-		res = append(res, 0x90)
+func RegionInfo(handle w.Handle, address uintptr) (bool, uintptr) {
+	var mbi w.MemoryBasicInformation
+	if err := w.VirtualQueryEx(handle, address, &mbi, unsafe.Sizeof(mbi)); err != nil {
+		return false, 4096
 	}
-	return res
+	remaining := mbi.RegionSize - (address - mbi.BaseAddress)
+	return IsReadable(mbi), remaining
+}
+
+func IsReadable(mbi w.MemoryBasicInformation) bool {
+	if mbi.State != w.MEM_COMMIT {
+		return false
+	}
+	if (mbi.Protect & uint32(w.PAGE_GUARD|w.PAGE_NOACCESS)) != 0 {
+		return false
+	}
+	return true
 }
 
 func findInChunk(chunk []byte, sig Signature) (int, bool) {
-	for i := 0; i <= len(chunk)-len(sig.Data); i++ {
+	if len(sig.Data) == 0 {
+		return 0, false
+	}
+	for i := 0; i <= len(chunk)-len(sig.Data); {
+		if sig.Mask[0] != '?' {
+			idx := bytes.IndexByte(chunk[i:len(chunk)-len(sig.Data)+1], sig.Data[0])
+			if idx == -1 {
+				return 0, false
+			}
+			i += idx
+		}
 		if matchSignature(chunk[i:i+len(sig.Data)], sig) {
 			return i, true
 		}
+		i++
 	}
 	return 0, false
 }
@@ -148,4 +179,12 @@ func virtualProtectUnlock(proc *win.Process, addr, size uintptr) (p uint32, err 
 func virtualProtectLock(proc *win.Process, addr, size uintptr, p uint32) {
 	var temp uint32
 	_ = w.VirtualProtectEx(proc.Handle, addr, size, p, &temp)
+}
+
+func NopBytes(size int) []byte {
+	res := make([]byte, 0, size)
+	for range size {
+		res = append(res, 0x90)
+	}
+	return res
 }

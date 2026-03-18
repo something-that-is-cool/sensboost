@@ -39,18 +39,19 @@ func TestParsePointer(t *testing.T) {
 			expectFail: true,
 		},
 	} {
-		ptr, err := ParsePointer(tt.addr, tt.offsets)
-		if err == nil && tt.expectFail {
-			t.Fatalf("(%s) error is nil but expected fail; addr=%q,offsets=%q", tt.name, tt.addr, tt.offsets)
-		}
-		if err != nil && !tt.expectFail {
-			t.Fatalf("(%s) error is %v but fail is not expected; addr=%q,offsets=%q", tt.name, err, tt.addr, tt.offsets)
-		}
-		if tt.equalToPrevious && (prev != nil && !pointersEqual(*prev, ptr)) {
-			t.Fatalf("ptr %#v (%q) does not equals to %#v", ptr, tt.name, prev)
-		}
-		prev = &ptr
-		t.Logf("test %q passed", tt.name)
+		t.Run(tt.name, func(t *testing.T) {
+			ptr, err := ParsePointer(tt.addr, tt.offsets)
+			if err == nil && tt.expectFail {
+				t.Fatalf("(%s) error is nil but expected fail; addr=%q,offsets=%q", tt.name, tt.addr, tt.offsets)
+			}
+			if err != nil && !tt.expectFail {
+				t.Fatalf("(%s) error is %v but fail is not expected; addr=%q,offsets=%q", tt.name, err, tt.addr, tt.offsets)
+			}
+			if tt.equalToPrevious && (prev != nil && !pointersEqual(*prev, ptr)) {
+				t.Fatalf("ptr %#v (%q) does not equals to %#v", ptr, tt.name, prev)
+			}
+			prev = &ptr
+		})
 	}
 }
 

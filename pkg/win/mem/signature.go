@@ -12,10 +12,18 @@ type Signature struct {
 }
 
 func (sig Signature) Empty() bool {
-	return len(sig.Data) == 0 || sig.Mask == ""
+	return len(sig.Data) == 0 && sig.Mask == ""
 }
 
-func MustParseSignature(from string) (sig Signature) {
+func MustParseSignature(from string) Signature {
+	sig, err := ParseSignature(from)
+	if err != nil {
+		panic(fmt.Errorf("mem MustParseSignature: %w", err))
+	}
+	return sig
+}
+
+func ParseSignature(from string) (sig Signature, err error) {
 	for _, part := range strings.Fields(from) {
 		if strings.Contains(part, "?") {
 			sig.Data = append(sig.Data, 0)
@@ -27,12 +35,12 @@ func MustParseSignature(from string) (sig Signature) {
 		}
 		b, err := hex.DecodeString(part)
 		if err != nil {
-			panic(fmt.Errorf("invalid hex byte %q: %w", part, err))
+			return Signature{}, fmt.Errorf("invalid hex byte %q: %w", part, err)
 		}
 		sig.Data = append(sig.Data, b...)
 		sig.Mask += "x"
 	}
-	return sig
+	return sig, nil
 }
 
 func FullMask(n int) string {
