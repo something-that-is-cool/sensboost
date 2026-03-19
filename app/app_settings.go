@@ -19,7 +19,7 @@ import (
 
 var aboutMessage = misc.JoinNewLine(
 	"zutil (MC:PE 1.1.5)",
-	"build "+version.Commit,
+	"build "+version.Version+" "+"("+version.Commit+")",
 	"",
 	"made by k4ties, anx1ous",
 	"",
