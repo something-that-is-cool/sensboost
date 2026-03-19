@@ -1,4 +1,4 @@
-package main
+package hotkey_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/hotkey"
 )
 
-func main() {
+func ExampleManager() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
