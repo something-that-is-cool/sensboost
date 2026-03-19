@@ -90,20 +90,42 @@ func (m *byteToggleModule) lazyToggler() (*memutil.ByteToggler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("scan sig: %w", err)
 	}
+	patch, err := m.extendSigWildcards(addr, m.sig.Patch)
+	if err != nil {
+		return nil, fmt.Errorf("extend wildcards to patch: %w", err)
+	}
 	original := m.sig.Original.Data
 	if original == nil {
-		original = m.sig.Signature.Data
+		original, _ = mem.ReadBytes(m.proc, addr, uint(len(patch)))
 	}
 	t := &memutil.ByteToggler{
 		Process:  m.proc,
 		Address:  addr,
 		Original: original,
-		Patch:    m.sig.Patch.Data,
+		Patch:    patch,
 	}
-	currentBytes, err := mem.ReadBytes(m.proc, addr, uint(len(m.sig.Patch.Data)))
-	if err == nil && bytes.Equal(currentBytes, m.sig.Patch.Data) {
+	currentBytes, err := mem.ReadBytes(m.proc, addr, uint(len(patch)))
+	if err == nil && bytes.Equal(currentBytes, patch) {
 		t.SetState(true)
 	}
 	m.t = t
 	return t, nil
+}
+
+func (m *byteToggleModule) extendSigWildcards(addr uintptr, patch mem.Signature) ([]byte, error) {
+	originalBytes, err := mem.ReadBytes(m.proc, addr, uint(len(patch.Data)))
+	if err != nil {
+		return nil, fmt.Errorf("read original bytes at 0x%X: %w", addr, err)
+	}
+	data := make([]byte, len(patch.Data))
+	copy(data, patch.Data)
+
+	for i := 0; i < len(patch.Data); i++ {
+		if i < len(m.sig.Signature.Mask) {
+			if m.sig.Signature.Mask[i] == '?' {
+				data[i] = originalBytes[i]
+			}
+		}
+	}
+	return data, nil
 }

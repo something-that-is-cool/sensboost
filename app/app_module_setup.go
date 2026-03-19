@@ -18,6 +18,7 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 		app.createNoParticleModule(proc),
 		app.createZoomModule(proc),
 		app.createItemDelayFixModule(proc),
+		app.createNoCamResetModule(proc),
 	}
 }
 
@@ -65,6 +66,13 @@ func (app *App) createZoomModule(proc *win.Process) module.Config {
 
 func (app *App) createItemDelayFixModule(proc *win.Process) module.Config {
 	conf := &modules.ItemDelayFix{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
+	conf.OnToggle = app.onModuleToggled(conf.Identifier())
+	return conf
+}
+
+func (app *App) createNoCamResetModule(proc *win.Process) module.Config {
+	conf := &modules.NoCamReset{Process: proc}
 	conf.Error = app.onError(conf.Identifier())
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
