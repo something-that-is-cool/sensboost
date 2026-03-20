@@ -11,7 +11,8 @@ import (
 )
 
 var noHurtCamSig = modulesutil.SignatureSettings{
-	Signature: mem.MustParseSignature("66 44 0F 6E 83 6C 0E 00 00"),
+	Signature: mem.MustParseSignature("66 44 0F 6E 83 ? ? ? ? 45 0F 5B C0 44 0F 29 4C 24"),
+	PatchFunc: modulesutil.PatchFuncExtendNop(9),
 }
 
 var _ module.Config = (*NoHurtCam)(nil)
@@ -24,7 +25,7 @@ type NoHurtCam struct {
 }
 
 func (conf *NoHurtCam) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
-	c := &modulesutil.SigToggleModule{
+	c := &modulesutil.ByteToggleModule{
 		Sig:      noHurtCamSig,
 		Process:  conf.Process,
 		Error:    conf.Error,

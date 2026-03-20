@@ -15,6 +15,24 @@ func (sig Signature) Empty() bool {
 	return len(sig.Data) == 0 && sig.Mask == ""
 }
 
+func (sig Signature) ExtendFirst(x []byte) Signature {
+	if len(x) > len(sig.Data) {
+		panic(fmt.Errorf("mem.Signature: ExtendFirst: input length %d exceeds signature length %d", len(x), len(sig.Data)))
+	}
+	data := make([]byte, len(sig.Data))
+	copy(data, sig.Data)
+
+	mask := []byte(sig.Mask)
+	for i := 0; i < len(x); i++ {
+		data[i] = x[i]
+		mask[i] = 'x'
+	}
+	return Signature{
+		Data: data,
+		Mask: string(mask),
+	}
+}
+
 func MustParseSignature(from string) Signature {
 	sig, err := ParseSignature(from)
 	if err != nil {

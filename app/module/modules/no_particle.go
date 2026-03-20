@@ -11,7 +11,8 @@ import (
 )
 
 var noParticleSig = modulesutil.SignatureSettings{
-	Signature: mem.MustParseSignature("E8 68 4F CF FF"),
+	Signature: mem.MustParseSignature("E8 ? ? ? ? FF 84 B7"),
+	PatchFunc: modulesutil.PatchFuncExtendNop(5),
 }
 
 var _ module.Config = (*NoParticle)(nil)
@@ -24,7 +25,7 @@ type NoParticle struct {
 }
 
 func (conf *NoParticle) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
-	c := &modulesutil.SigToggleModule{
+	c := &modulesutil.ByteToggleModule{
 		Sig:      noParticleSig,
 		Process:  conf.Process,
 		Error:    conf.Error,

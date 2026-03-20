@@ -11,8 +11,8 @@ import (
 )
 
 var zoomSig = modulesutil.SignatureSettings{
-	Signature: mem.MustParseSignature("F3 0F 10 89 94 00 00 00 0F 2F"),
-	Patch:     mem.MustParseSignature("90 90 90 90 90 90 90 90 0F 2F"),
+	Signature: mem.MustParseSignature("F3 0F 10 89 ? ? ? ? 0F 2F F1"),
+	PatchFunc: modulesutil.PatchFuncExtendNop(8),
 }
 
 var _ module.Config = (*Zoom)(nil)

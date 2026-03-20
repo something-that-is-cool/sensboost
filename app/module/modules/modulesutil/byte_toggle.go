@@ -21,6 +21,7 @@ type ByteToggleModule struct {
 }
 
 func (conf ByteToggleModule) New() (ToggleableModule, error) {
+	extendPatchFunc(&conf.Sig)
 	m := &byteToggleModule{
 		ErrorHandler: errorHandler{err: conf.Error},
 		sig:          conf.Sig,
@@ -118,14 +119,12 @@ func (m *byteToggleModule) extendSigWildcards(addr uintptr, patch mem.Signature)
 		return nil, fmt.Errorf("read original bytes at 0x%X: %w", addr, err)
 	}
 	data := make([]byte, len(patch.Data))
-	copy(data, patch.Data)
-
 	for i := 0; i < len(patch.Data); i++ {
-		if i < len(m.sig.Signature.Mask) {
-			if m.sig.Signature.Mask[i] == '?' {
-				data[i] = originalBytes[i]
-			}
+		if i < len(patch.Mask) && patch.Mask[i] == '?' {
+			data[i] = originalBytes[i]
+			continue
 		}
+		data[i] = patch.Data[i]
 	}
 	return data, nil
 }

@@ -11,8 +11,8 @@ import (
 )
 
 var itemDelayFixSignature = modulesutil.SignatureSettings{
-	Signature: mem.MustParseSignature("48 89 86 88 00 00 00 48"),
-	Patch:     mem.MustParseSignature("90 90 90 90 90 90 90 48"),
+	Signature: mem.MustParseSignature("48 89 86 ? ? ? ? 48 83 7E ? 00"),
+	PatchFunc: modulesutil.PatchFuncExtendNop(7),
 }
 
 var _ module.Config = (*ItemDelayFix)(nil)

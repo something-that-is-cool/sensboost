@@ -36,6 +36,19 @@ type SignatureSettings struct {
 	Signature mem.Signature
 	Patch     mem.Signature //optional for nop sig toggler
 
+	PatchFunc func(SignatureSettings) mem.Signature //optional; required if Patch is not set
+
 	Original mem.Signature //optional
 	Offset   uintptr       //optional
+}
+
+func extendPatchFunc(conf *SignatureSettings) bool {
+	if conf.Patch.Data != nil {
+		return true
+	}
+	if conf.PatchFunc == nil {
+		return false
+	}
+	conf.Patch = conf.PatchFunc(*conf)
+	return conf.Patch.Data != nil
 }

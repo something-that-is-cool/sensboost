@@ -12,12 +12,9 @@ import (
 )
 
 var noDynamicFovSig = modulesutil.SignatureSettings{
-	Signature: mem.MustParseSignature("F3 0F 11 83 78 12 00 00"),
+	Signature: mem.MustParseSignature("F3 0F 11 83 ? ? ? ? 48 8B 83 ? ? ? ? 48 8B 48"),
+	PatchFunc: modulesutil.PatchFuncExtendNop(8), // patch first 8 bytes of sig to nop
 }
-var fovPtr = mem.MustParsePointer(
-	"01921DF8", //+module
-	"30 D8 20 BE0",
-)
 
 var _ module.Config = (*NoDynamicFov)(nil)
 
@@ -29,7 +26,7 @@ type NoDynamicFov struct {
 }
 
 func (conf *NoDynamicFov) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
-	c := &modulesutil.SigToggleModule{
+	c := &modulesutil.ByteToggleModule{
 		Sig:     noDynamicFovSig,
 		Process: conf.Process,
 		Error:   conf.Error,
@@ -77,6 +74,11 @@ func (n *noDynamicFov) Edit(p module.Property, cause e.ActionCause) {
 	modulesutil.SyncState(n, p, cause)
 }
 
+var fovPtr = mem.MustParsePointer(
+	"01921DF8", //+module
+	"30 D8 20 BE0",
+)
+
 const maxStaticFloatValue float32 = 1.0
 
 type fovClamper struct {
@@ -113,7 +115,7 @@ func (m *fovClamper) lazyAddress() (uintptr, bool) {
 	addr, err := mem.ResolvePointerAddress(m.proc, fovPtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "Only part of a ReadProcessMemory or WriteProcessMemory request was completed") {
-			//fixme: hack: prevent error logs when player is not in world
+			// hack: prevents error logs when player is not in world
 			return 0, false
 		}
 		m.err(fmt.Errorf("resolve fov ptr addr: %w", err))

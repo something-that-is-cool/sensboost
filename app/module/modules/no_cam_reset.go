@@ -11,11 +11,9 @@ import (
 )
 
 var noCamResetSig = modulesutil.SignatureSettings{
-	Signature: mem.MustParseSignature("FF 90 ? ? ? ? ? ? ? 48 8B D6 44 8B 4C 24"), //sub_140A49260 ; call qword ptr [rax+88h]
-	Patch:     mem.MustParseSignature("90 90 90 90 90 90 90"),
+	Signature: mem.MustParseSignature("FF 90 ? ? ? ? ? ? ? 48 8B D6 44 8B 4C 24"), //call qword ptr [rax+88h] (2)
+	PatchFunc: modulesutil.PatchFuncExtendNop(2),
 }
-
-//todo improve other sigs (with ida sigmaker)
 
 var _ module.Config = (*NoCamReset)(nil)
 

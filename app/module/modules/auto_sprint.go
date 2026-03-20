@@ -5,14 +5,19 @@ import (
 
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/app/module/modules/modulesutil"
+	"github.com/something-that-is-cool/zutil/pkg/asm"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 var autoSprintSig = modulesutil.SignatureSettings{
-	Signature: mem.MustParseSignature("0F B6 41 63 40 32 ED"),
-	Patch:     mem.MustParseSignature("66 B8 01 00 40 30 ED"),
+	Signature: mem.MustParseSignature("0F B6 41 ? 40 32 ED"),
+	PatchFunc: modulesutil.PatchFuncExtendBuilder(asm.Build().
+		MovAxImm8(0x01).
+		Wildcard().
+		XorChBpl(),
+	),
 }
 
 var _ module.Config = (*AutoSprint)(nil)

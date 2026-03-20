@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	"github.com/something-that-is-cool/zutil/app/module"
+	"github.com/something-that-is-cool/zutil/pkg/asm"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
 type DefaultDisabled struct{}
@@ -43,4 +45,22 @@ func SyncValue[T any](m ModuleWithValue[T], p module.Property, cause e.ActionCau
 
 func disableOnlyAction(t ToggleableModule, cause e.ActionCause) error {
 	return t.UpdateState(false, cause, fyneutil.TogglerOptionOnlyCallAction{})
+}
+
+func PatchFuncExtend(x []byte) func(SignatureSettings) mem.Signature {
+	return func(s SignatureSettings) mem.Signature {
+		return s.Signature.ExtendFirst(x)
+	}
+}
+
+func PatchFuncExtendNop(n int) func(SignatureSettings) mem.Signature {
+	return PatchFuncExtend(mem.NopBytes(n))
+}
+
+func PatchFuncExtendBuilder(b *asm.Builder) func(SignatureSettings) mem.Signature {
+	return func(s SignatureSettings) mem.Signature {
+		sig := b.BuildSignature()
+		b.ClearAndReturn() // the builder must no longer be used
+		return s.Signature.ExtendFirst(sig.Data)
+	}
 }
