@@ -15,14 +15,14 @@ func InAlphabet(r rune) bool {
 
 func SortByAlphabet(x []string) {
 	slices.SortFunc(x, func(a, b string) int {
-		if pa, pb := getAlphabetSortPriority(a), getAlphabetSortPriority(b); pa != pb {
+		if pa, pb := CompareStringAlphabet(a), CompareStringAlphabet(b); pa != pb {
 			return pa - pb
 		}
 		return strings.Compare(a, b)
 	})
 }
 
-func getAlphabetSortPriority(s string) int {
+func CompareStringAlphabet(s string) int {
 	if len(s) != 1 {
 		return len(s) + 2
 	}
