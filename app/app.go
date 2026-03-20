@@ -186,7 +186,7 @@ func (app *App) close(cause e.CloseCause, main ...bool) (multi error) {
 	if !misc.HasTrueOption(main) {
 		relay = fyne.DoAndWait
 	}
-	relay(app.app.Quit)
+	relay(app.app.Quit) //todo: close with timeout
 	return nil
 }
 
