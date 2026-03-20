@@ -3,10 +3,13 @@ package app
 import (
 	"github.com/elliotchance/orderedmap/v3"
 	"github.com/something-that-is-cool/zutil/app/module"
+	"github.com/something-that-is-cool/zutil/pkg/e"
 	"go.uber.org/multierr"
 )
 
 type modulesMap = orderedmap.OrderedMap[module.Config, module.Module]
+
+var actionCauseModuleCreated = e.NewActionCause("module created (init)")
 
 func (app *App) createModulesFromConfigs(configs []module.Config) (*modulesMap, bool, error) {
 	type toCreateModule struct {
@@ -31,7 +34,7 @@ func (app *App) createModulesFromConfigs(configs []module.Config) (*modulesMap, 
 		multiErr error
 	)
 	for _, m := range toCreate {
-		mod, err := m.Config.Create(m.Property, nil)
+		mod, err := m.Config.Create(m.Property, actionCauseModuleCreated)
 		if err != nil {
 			multiErr = multierr.Append(multiErr, err)
 			continue

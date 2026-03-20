@@ -61,6 +61,9 @@ type byteToggleModule struct {
 }
 
 func (m *byteToggleModule) UpdateState(v bool, cause e.ActionCause, opts ...any) error {
+	if cause == nil {
+		cause = e.ActionCauseExternal
+	}
 	if m.toggler.Check.Checked == v {
 		return e.ErrValuesIsAlready{Value: v}
 	}

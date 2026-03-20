@@ -103,7 +103,8 @@ func (app *App) writeConfig(conf *UserConfig, path string) (err error) {
 
 func (app *App) onModuleToggled(id string) func(bool, e.ActionCause) {
 	return func(b bool, cause e.ActionCause) {
-		if e.ActionCauseIs(cause, actionCauseModuleDisabled) {
+		if e.ActionCauseIs(cause, actionCauseModuleDisabled) || e.ActionCauseIs(cause, actionCauseModuleCreated) {
+			// don't log when disabling modules or when modules are initializing
 			return
 		}
 		app.editProperty(id, func(p *module.Property) {
@@ -115,7 +116,7 @@ func (app *App) onModuleToggled(id string) func(bool, e.ActionCause) {
 
 func onModuleValueChanged[T any](app *App, id string) func(T, e.ActionCause) {
 	return func(v T, cause e.ActionCause) {
-		if e.ActionCauseIs(cause, actionCauseModuleDisabled) {
+		if e.ActionCauseIs(cause, actionCauseModuleDisabled) || e.ActionCauseIs(cause, actionCauseModuleCreated) {
 			return
 		}
 		app.editProperty(id, func(p *module.Property) {

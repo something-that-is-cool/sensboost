@@ -41,7 +41,7 @@ func (conf *ControllerSensitivity) Create(p module.Property, cause e.ActionCause
 		},
 		Ptr: controllerSensitivityPtr,
 	}
-	f, err := fc.New()
+	f, err := fc.New(cause)
 	if err != nil {
 		return nil, fmt.Errorf("create float ptr module: %w", err)
 	}

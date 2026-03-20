@@ -10,7 +10,7 @@ import (
 
 type SliderWithTrackedInput struct {
 	Handler        e.ErrorHandler
-	Action         func(v float64, cause e.ActionCause) error
+	Action         func(v float64, cause e.ActionCause, first bool) error
 	DefaultCause   e.ActionCause
 	Min, Max, Step float64
 	Default        float64
@@ -86,22 +86,24 @@ func (s *SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 		s.Input.SetText(format(f))
 		s.inputRecursive = false
 	}
-	s.Set(s.Slider.Value, s.DefaultCause)
+	s.Set(s.Slider.Value, s.DefaultCause, sliderInputOptionFirst{})
 	return s.Slider, s.Input
 }
 
 type (
 	SliderInputOptionNotRefresh     struct{}
 	SliderInputOptionOnlyCallAction struct{}
+
+	sliderInputOptionFirst struct{}
 )
 
 func (s *SliderWithTrackedInput) Set(v float64, cause e.ActionCause, opts ...any) {
-	notRefresh, onlyCallAction := handleSliderInputOpts(opts)
-	if err := s.Action(v, cause); err != nil {
+	o := handleSliderInputOpts(opts)
+	if err := s.Action(v, cause, o.First); err != nil {
 		s.Handler.HandleError("slider/input action", err)
 		return
 	}
-	if onlyCallAction {
+	if o.OnlyCallAction {
 		return
 	}
 	s.Slider.Value = v
@@ -109,7 +111,7 @@ func (s *SliderWithTrackedInput) Set(v float64, cause e.ActionCause, opts ...any
 	s.Input.SetText(s.getFormatFunc()(v))
 	s.inputRecursive = false
 
-	if !notRefresh {
+	if !o.NotRefresh {
 		s.Slider.Refresh()
 		s.Input.Refresh()
 	}
@@ -135,13 +137,19 @@ func formatFloatDefault(f float64) string {
 	return fmt.Sprintf("%.0f", f)
 }
 
-func handleSliderInputOpts(x []any) (notRefresh, onlyCallAction bool) {
+type options struct {
+	NotRefresh, OnlyCallAction, First bool
+}
+
+func handleSliderInputOpts(x []any) (opts options) {
 	for _, v := range x {
 		switch v.(type) {
 		case SliderInputOptionNotRefresh:
-			notRefresh = true
+			opts.NotRefresh = true
 		case SliderInputOptionOnlyCallAction:
-			onlyCallAction = true
+			opts.OnlyCallAction = true
+		case sliderInputOptionFirst:
+			opts.First = true
 		}
 	}
 	return

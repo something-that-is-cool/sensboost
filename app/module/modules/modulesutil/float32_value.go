@@ -30,7 +30,7 @@ type Float32Module struct { // so float64 would be DoublePointerModule
 }
 
 // New ...
-func (conf Float32Module) New() (ModuleWithValue[float64], error) {
+func (conf Float32Module) New(initialCause e.ActionCause) (ModuleWithValue[float64], error) {
 	if conf.SliderToMemory == nil {
 		conf.SliderToMemory = func(f float64) float32 { return float32(f) }
 	}
@@ -60,9 +60,12 @@ func (conf Float32Module) New() (ModuleWithValue[float64], error) {
 		Max:           conf.Max,
 		Step:          conf.Step,
 		ShowRemainder: conf.ShowRemainer,
-		Action: func(newVal float64, cause e.ActionCause) error {
+		Action: func(newVal float64, cause e.ActionCause, first bool) error {
 			if !f.forceWrite(newVal) {
 				return nil
+			}
+			if first {
+				cause = initialCause
 			}
 			conf.OnValueChanged(newVal, cause)
 			return nil
@@ -104,6 +107,9 @@ func (m *float32Module) CreateObjects() []fyne.CanvasObject {
 
 // SetValue ...
 func (m *float32Module) SetValue(v float64, cause e.ActionCause, opts ...any) error {
+	if cause == nil {
+		cause = e.ActionCauseExternal
+	}
 	if mgl64.FloatEqual(m.si.Slider.Value, v) {
 		return e.ErrValuesIsAlready{Value: v}
 	}
