@@ -43,13 +43,12 @@ func MustParsePointer(addrStr, offsetsStr string) Pointer {
 	return ptr
 }
 
-func ResolvePointerValue[T any](proc *win.Process, ptr Pointer, opts ...any) (T, uintptr, error) {
-	var zero T
-	finalAddr, err := ResolvePointerAddress(proc, ptr, opts...)
+func ResolvePointerValue[T any](proc *win.Process, ptr Pointer, opts ...any) (zero T, addr uintptr, err error) {
+	finalAddr, o, err := resolvePointerAddress(proc, ptr, opts...)
 	if err != nil {
 		return zero, 0, fmt.Errorf("resolve pointer address: %w", err)
 	}
-	val, err := ReadMemory[T](proc, finalAddr, opts...)
+	val, err := ReadMemory[T](proc, finalAddr, o.Protect)
 	if err != nil {
 		return zero, 0, fmt.Errorf("read final value: %w", err)
 	}
@@ -57,23 +56,48 @@ func ResolvePointerValue[T any](proc *win.Process, ptr Pointer, opts ...any) (T,
 }
 
 func ResolvePointerAddress(proc *win.Process, ptr Pointer, opts ...any) (uintptr, error) {
-	mod, err := proc.GetModuleInfo()
+	addr, _, err := resolvePointerAddress(proc, ptr, opts...)
+	return addr, err
+}
+
+func resolvePointerAddress(proc *win.Process, ptr Pointer, opts ...any) (uintptr, options, error) {
+	o := handleOptions(opts)
+
+	mod, err := proc.GetModuleInfo(o.GetModuleOpts...)
 	if err != nil {
-		return 0, fmt.Errorf("get proc module info: %w", err)
+		return 0, o, fmt.Errorf("get proc module info: %w", err)
 	}
-	finalAddr := ptr.BaseAddress
-	if subModule, _ := handleOptions(opts); !subModule {
-		finalAddr += mod.Address
-	}
-	addr, err := ReadMemory[uintptr](proc, finalAddr, opts...)
+	addr, err := ReadMemory[uintptr](proc, ptr.BaseAddress+mod.Address, o.Protect)
 	if err != nil {
-		return 0, fmt.Errorf("read base addr: %w", err)
+		return 0, o, fmt.Errorf("read base addr: %w", err)
 	}
 	for i := 0; i < len(ptr.Offsets)-1; i++ {
-		addr, err = ReadMemory[uintptr](proc, addr+ptr.Offsets[i], opts...)
+		addr, err = ReadMemory[uintptr](proc, addr+ptr.Offsets[i], o.Protect)
 		if err != nil {
-			return 0, fmt.Errorf("read offset at step %d: %w", i, err)
+			return 0, options{}, fmt.Errorf("read offset at step %d: %w", i, err)
 		}
 	}
-	return addr + ptr.Offsets[len(ptr.Offsets)-1], nil
+	return addr + ptr.Offsets[len(ptr.Offsets)-1], o, nil
+}
+
+type (
+	OptionCustomModule struct{ Options win.GetModuleInfoOptions }
+	OptionProtect      struct{}
+)
+
+type options struct {
+	GetModuleOpts []win.GetModuleInfoOptions
+	Protect       bool
+}
+
+func handleOptions(opts []any) (o options) {
+	for _, opt := range opts {
+		switch v := opt.(type) {
+		case OptionProtect:
+			o.Protect = true
+		case OptionCustomModule:
+			o.GetModuleOpts = append(o.GetModuleOpts, v.Options)
+		}
+	}
+	return
 }

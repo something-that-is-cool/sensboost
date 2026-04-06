@@ -62,7 +62,7 @@ func doPanic(v any) {
 	os.Exit(1)
 }
 
+//goland:noinspection GoBoolExpressions
 func createLogger() *slog.Logger {
-	//goland:noinspection GoBoolExpressions
 	return logger.NewPrettySlogger(os.Stdout, logger.Level(!DisableDebugLogs))
 }

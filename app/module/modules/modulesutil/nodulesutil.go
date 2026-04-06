@@ -2,6 +2,7 @@ package modulesutil
 
 import (
 	"fyne.io/fyne/v2"
+	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
@@ -10,6 +11,7 @@ type Module interface {
 	e.ErrorHandler
 	CreateObjects() []fyne.CanvasObject
 	Disable(cause e.ActionCause)
+	Edit(p module.Property, cause e.ActionCause)
 }
 
 type ToggleableModule interface {
@@ -32,23 +34,9 @@ type ToggleableModuleWithValue[T any] interface {
 	Value() (T, bool)
 }
 
-type SignatureSettings struct {
+type Settings struct {
 	Signature mem.Signature
-	Patch     mem.Signature //optional for nop sig toggler
-
-	PatchFunc func(SignatureSettings) mem.Signature //optional; required if Patch is not set
-
-	Original mem.Signature //optional
-	Offset   uintptr       //optional
-}
-
-func extendPatchFunc(conf *SignatureSettings) bool {
-	if conf.Patch.Data != nil {
-		return true
-	}
-	if conf.PatchFunc == nil {
-		return false
-	}
-	conf.Patch = conf.PatchFunc(*conf)
-	return conf.Patch.Data != nil
+	Patch     mem.Signature
+	PatchFunc func(Settings) mem.Signature //optional; required if Patch is not set
+	Offset    uintptr                      //optional
 }

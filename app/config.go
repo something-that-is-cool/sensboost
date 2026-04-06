@@ -29,7 +29,7 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	}
 	app := &App{conf: conf}
 	trackerConf := win.ProcessTrackerConfig{
-		CloseHandlers: []func(){func() {
+		OnClose: []func(){func() {
 			_ = app.close(closeCauseTrackerClosed)
 		}},
 		Process: proc,

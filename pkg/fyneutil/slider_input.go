@@ -34,7 +34,7 @@ func (s *SliderWithTrackedInput) Create() (*widget.Slider, *widget.Entry) {
 		s.Handler = e.NopErrorHandler{}
 	}
 	if s.DefaultCause == nil {
-		s.DefaultCause = e.ActionCauseExternal
+		s.DefaultCause = ActionCauseUserInput
 	}
 	if s.Slider == nil {
 		s.Slider = widget.NewSlider(s.Min, s.Max)

@@ -10,7 +10,7 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var noParticleSig = modulesutil.SignatureSettings{
+var noParticleSettings = modulesutil.Settings{
 	Signature: mem.MustParseSignature("E8 ? ? ? ? FF 84 B7"),
 	PatchFunc: modulesutil.PatchFuncExtendNop(5),
 }
@@ -26,45 +26,27 @@ type NoParticle struct {
 
 func (conf *NoParticle) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.ByteToggleModule{
-		Sig:      noParticleSig,
+		Settings: noParticleSettings,
 		Process:  conf.Process,
 		Error:    conf.Error,
 		OnToggle: conf.OnToggle,
 	}
-	s, err := c.New()
+	b, err := c.New()
 	if err != nil {
-		return nil, fmt.Errorf("create sig toggle module: %w", err)
+		return nil, fmt.Errorf("create byte toggle module: %w", err)
 	}
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	n := &noParticle{ToggleableModule: s}
-	n.Edit(p, cause)
-	return n, nil
+	m := modulesutil.NewBaseToggleable(b,
+		"no particle",
+		"disables particle rendering",
+	)
+	m.Edit(p, cause)
+	return m, nil
 }
 
 // Identifier ...
 func (*NoParticle) Identifier() string {
 	return "no_particle"
-}
-
-var _ module.Module = (*noParticle)(nil)
-
-type noParticle struct {
-	modulesutil.ToggleableModule
-}
-
-// Name ...
-func (*noParticle) Name() string {
-	return "no particle"
-}
-
-// Description ...
-func (*noParticle) Description() string {
-	return "disables particle rendering"
-}
-
-// Edit ...
-func (n *noParticle) Edit(p module.Property, cause e.ActionCause) {
-	modulesutil.SyncState(n, p, cause)
 }

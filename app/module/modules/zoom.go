@@ -10,7 +10,7 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var zoomSig = modulesutil.SignatureSettings{
+var zoomSettings = modulesutil.Settings{
 	Signature: mem.MustParseSignature("F3 0F 10 89 ? ? ? ? 0F 2F F1"),
 	PatchFunc: modulesutil.PatchFuncExtendNop(8),
 }
@@ -27,7 +27,7 @@ type Zoom struct {
 // Create ...
 func (conf *Zoom) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.ByteToggleModule{
-		Sig:      zoomSig,
+		Settings: zoomSettings,
 		Process:  conf.Process,
 		Error:    conf.Error,
 		OnToggle: conf.OnToggle,
@@ -39,7 +39,10 @@ func (conf *Zoom) Create(p module.Property, cause e.ActionCause) (module.Module,
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	m := &zoom{ToggleableModule: b}
+	m := modulesutil.NewBaseToggleable(b,
+		"zoom",
+		"...",
+	)
 	m.Edit(p, cause)
 	return m, nil
 }
@@ -47,25 +50,4 @@ func (conf *Zoom) Create(p module.Property, cause e.ActionCause) (module.Module,
 // Identifier ...
 func (conf *Zoom) Identifier() string {
 	return "zoom"
-}
-
-var _ module.Module = (*zoom)(nil)
-
-type zoom struct {
-	modulesutil.ToggleableModule
-}
-
-// Name ...
-func (z *zoom) Name() string {
-	return "zoom"
-}
-
-// Description ...
-func (z *zoom) Description() string {
-	return "..."
-}
-
-// Edit ...
-func (z *zoom) Edit(p module.Property, cause e.ActionCause) {
-	modulesutil.SyncState(z, p, cause)
 }

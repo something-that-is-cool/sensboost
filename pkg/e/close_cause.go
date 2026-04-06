@@ -7,10 +7,16 @@ type CloseCause interface {
 	CloseCause()
 }
 
+var _ CloseCause = (*closeCause)(nil)
+
 type closeCause struct{ e error }
 
 func (c closeCause) Error() string { return c.e.Error() }
-func (closeCause) CloseCause()     {}
+func (c closeCause) CloseCause()   {}
+
+func (c closeCause) Unwrap() error {
+	return c.e
+}
 
 func NewCloseCause(err error) CloseCause {
 	return closeCause{e: err}

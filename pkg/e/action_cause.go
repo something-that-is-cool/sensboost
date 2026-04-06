@@ -7,13 +7,15 @@ type ActionCause interface {
 	ActionCause()
 }
 
-type actionCause struct{ string }
+var _ ActionCause = (*actionCause)(nil)
 
-func (a actionCause) String() string { return a.string }
-func (actionCause) ActionCause()     {}
+type actionCause string
+
+func (a actionCause) String() string { return string(a) }
+func (a actionCause) ActionCause()   {}
 
 func NewActionCause(str string) ActionCause {
-	return actionCause{string: str}
+	return actionCause(str)
 }
 
 func ActionCauseIs(a, b ActionCause) bool {

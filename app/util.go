@@ -44,7 +44,7 @@ func (app *App) moduleByIDUnsafe(id string) (module.Module, bool) {
 
 func (app *App) doClose(name string, fn func() error) {
 	app.conf.Logger.Info("closing " + name + "...")
-	if err := fn(); err != nil && !errors.Is(err, e.ErrAlreadyClosed) {
+	if err := fn(); err != nil && (!errors.Is(err, e.ErrAlreadyClosed) && !errors.Is(err, e.ErrClosed)) {
 		app.conf.Logger.Warn("cannot close "+name, "err", err.Error())
 		return
 	}

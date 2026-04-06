@@ -10,7 +10,7 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var noCamResetSig = modulesutil.SignatureSettings{
+var noCamResetSettings = modulesutil.Settings{
 	Signature: mem.MustParseSignature("FF 90 ? ? ? ? ? ? ? 48 8B D6 44 8B 4C 24"), //call qword ptr [rax+88h] (2)
 	PatchFunc: modulesutil.PatchFuncExtendNop(2),
 }
@@ -27,7 +27,7 @@ type NoCamReset struct {
 // Create ...
 func (conf *NoCamReset) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.ByteToggleModule{
-		Sig:      noCamResetSig,
+		Settings: noCamResetSettings,
 		Process:  conf.Process,
 		Error:    conf.Error,
 		OnToggle: conf.OnToggle,
@@ -39,33 +39,15 @@ func (conf *NoCamReset) Create(p module.Property, cause e.ActionCause) (module.M
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	n := &noCamReset{ToggleableModule: b}
-	n.Edit(p, cause)
-	return n, nil
+	m := modulesutil.NewBaseToggleable(b,
+		"no cam reset",
+		"prevents teleport rotation interpolation",
+	)
+	m.Edit(p, cause)
+	return m, nil
 }
 
 // Identifier ...
 func (conf *NoCamReset) Identifier() string {
 	return "no_cam_reset"
-}
-
-var _ module.Module = (*noCamReset)(nil)
-
-type noCamReset struct {
-	modulesutil.ToggleableModule
-}
-
-// Name ...
-func (*noCamReset) Name() string {
-	return "no cam reset"
-}
-
-// Description ...
-func (*noCamReset) Description() string {
-	return "prevents teleport rotation interpolation"
-}
-
-// Edit ...
-func (n *noCamReset) Edit(p module.Property, cause e.ActionCause) {
-	modulesutil.SyncState(n, p, cause)
 }

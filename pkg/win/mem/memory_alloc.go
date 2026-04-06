@@ -25,7 +25,7 @@ func Alloc(proc *win.Process, size uintptr) (uintptr, error) {
 	)
 	if ret == 0 {
 		if err == nil {
-			err = errors.New("cannot call proc")
+			err = ErrCannotCallProc
 		}
 		return 0, fmt.Errorf("call VirtualAllocEx: %w", err)
 	}
@@ -41,7 +41,7 @@ func Unalloc(proc *win.Process, addr uintptr) (bool, error) {
 	)
 	if ret == 0 {
 		if err == nil {
-			err = errors.New("cannot call proc")
+			err = ErrCannotCallProc
 		}
 		return false, fmt.Errorf("call VirtualFreeEx: %w", err)
 	}
@@ -49,7 +49,11 @@ func Unalloc(proc *win.Process, addr uintptr) (bool, error) {
 }
 
 func AllocNear(proc *win.Process, target uintptr, size uintptr) (uintptr, error) {
-	for offset := uintptr(0x10000); offset < 0x7FFFF000; offset += 0x10000 {
+	const (
+		step   uintptr = 0x10000
+		region uintptr = 0x7FFFF000
+	)
+	for offset := step; offset < region; offset += step {
 		for _, addr := range []uintptr{target + offset, target - offset} {
 			if addr == 0 {
 				continue

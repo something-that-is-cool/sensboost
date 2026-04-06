@@ -62,17 +62,23 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 	app.syncTheme(app.userConf.V)
 	app.userConf.Unlock()
 
+	app.conf.Logger.Debug("creating module configs...")
 	configs := app.setupModules(proc)
 	if len(configs) == 0 {
 		return errors.New("no modules created")
 	}
-	modules, ok, err := app.createModulesFromConfigs(configs)
+	app.conf.Logger.Debug("created module configs.")
+
+	app.conf.Logger.Debug("creating modules from configs...")
+	modules, ok, err := app.createModulesFromConfigs(configs) //must have at least one config to call this method
 	if !ok && err != nil {
 		// no modules created = aborting start
 		return fmt.Errorf("create modules from configs: %w", err)
 	}
 	if err != nil {
 		app.conf.Logger.Error("error creating modules from configs", "err", err.Error())
+	} else {
+		app.conf.Logger.Debug("created modules from configs.")
 	}
 	app.data.V.modules = modules
 	app.data.V.modulesInit = true
@@ -82,10 +88,12 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 	app.hm = hotkey.ManagerConfig{Handlers: app.loadBinds(app.userConf.V)}.New()
 	app.userConf.Unlock()
 
+	app.conf.Logger.Debug("creating app content...")
 	c, err := app.createContent(modules, app.win)
 	if err != nil {
 		return fmt.Errorf("create content: %w", err)
 	}
+	app.conf.Logger.Debug("created app content.")
 	app.win.SetContent(c)
 	return nil
 }
@@ -132,9 +140,12 @@ func (app *App) run() (chan struct{}, error) {
 	if app.data.V.started {
 		return nil, e.ErrAlreadyRunning
 	}
+	app.conf.Logger.Info("initializing...")
 	if err := app.initUnsafe(app.tr.Process()); err != nil {
 		return nil, fmt.Errorf("init: %w", err)
 	}
+	app.conf.Logger.Info("initialized.")
+
 	done := make(chan struct{})
 	go func() {
 		select {
@@ -152,16 +163,16 @@ func (app *App) run() (chan struct{}, error) {
 
 func (app *App) runBackgroundTasks() {
 	go func() {
-		defer app.tr.Close()
 		if err := app.tr.Run(app.ctx); err != nil && !errors.Is(err, context.Canceled) {
 			app.conf.Logger.Error("process tracker error", "err", err)
 		}
+		// it'll be closed in Close call
 	}()
 	app.wg.Go(func() {
-		defer app.doClose("hotkey manager", app.hm.Close)
 		if err := app.hm.Run(app.ctx); err != nil && !errors.Is(err, context.Canceled) {
 			app.conf.Logger.Error("hotkey manager error", "err", err)
 		}
+		// same as process tracker...
 	})
 }
 
@@ -217,12 +228,13 @@ func (app *App) closeIfStarted(cause e.CloseCause) {
 	defer func() {
 		// after we disabled all modules we can close the context safely
 		app.cancel()
-		app.tr.Close()
+		app.doClose("process tracker", app.tr.CloseWithProcess)
 	}()
 	if app.data.V.uConfInit {
 		// save the user config
 		app.saveUserConfig(app.app)
 	}
+	fmt.Println(cause)
 	// if closed because parent process closed, we don't need to disable
 	// all modules as it will not affect
 	if app.data.V.modulesInit && !e.CloseCauseIs(cause, closeCauseTrackerClosed) {

@@ -11,6 +11,9 @@ type ClickableIcon struct {
 }
 
 func NewClickableIcon(icon fyne.Resource, tap func()) *ClickableIcon {
+	if tap == nil {
+		tap = func() {}
+	}
 	return &ClickableIcon{Icon: widget.NewIcon(icon), tap: tap}
 }
 

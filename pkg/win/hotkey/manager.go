@@ -39,15 +39,11 @@ type Manager struct {
 
 // Run ...
 func (m *Manager) Run(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-	if !m.initIfStarted(ctx) {
-		return e.ErrAlreadyRunning
+	if err := m.initIfStarted(ctx); err != nil {
+		return err
 	}
 	defer m.cancel()
+
 	select {
 	case <-m.ctx.Done():
 		return m.ctx.Err()
@@ -56,18 +52,23 @@ func (m *Manager) Run(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) initIfStarted(ctx context.Context) bool {
+func (m *Manager) initIfStarted(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 	m.running.Lock()
 	defer m.running.Unlock()
 
 	if m.running.V {
-		return false
+		return e.ErrAlreadyRunning
 	}
 	m.ctx, m.cancel = context.WithCancel(ctx)
 	m.running.V = true
 
 	hook.Register(hook.KeyUp, nil, m.handleEvent)
-	return true
+	return nil
 }
 
 func (m *Manager) Handle(key string, fn func()) {
@@ -125,13 +126,16 @@ func (m *Manager) handleEvent(ev hook.Event) {
 	if !ok {
 		return
 	}
-	m.Events.RLock()
-	defer m.Events.RUnlock()
+	h, ok := func() (func(), bool) {
+		m.Events.RLock()
+		defer m.Events.RUnlock()
 
-	h, ok := m.Events.V[s]
+		h, ok := m.Events.V[s]
+		return h, ok
+	}()
 	if !ok {
-		// event is not handled
 		return
 	}
+	// call handler within lock
 	h()
 }

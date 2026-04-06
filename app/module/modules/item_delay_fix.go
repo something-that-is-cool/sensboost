@@ -10,7 +10,7 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var itemDelayFixSignature = modulesutil.SignatureSettings{
+var itemDelayFixSettings = modulesutil.Settings{
 	Signature: mem.MustParseSignature("48 89 86 ? ? ? ? 48 83 7E ? 00"),
 	PatchFunc: modulesutil.PatchFuncExtendNop(7),
 }
@@ -27,7 +27,7 @@ type ItemDelayFix struct {
 // Create ...
 func (conf *ItemDelayFix) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.ByteToggleModule{
-		Sig:      itemDelayFixSignature,
+		Settings: itemDelayFixSettings,
 		Process:  conf.Process,
 		Error:    conf.Error,
 		OnToggle: conf.OnToggle,
@@ -39,7 +39,10 @@ func (conf *ItemDelayFix) Create(p module.Property, cause e.ActionCause) (module
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	m := &itemDelayFix{ToggleableModule: b}
+	m := modulesutil.NewBaseToggleable(b,
+		"item delay fix",
+		"removes attack use delay of 200 ms",
+	)
 	m.Edit(p, cause)
 	return m, nil
 }
@@ -47,25 +50,4 @@ func (conf *ItemDelayFix) Create(p module.Property, cause e.ActionCause) (module
 // Identifier ...
 func (conf *ItemDelayFix) Identifier() string {
 	return "item_delay_fix"
-}
-
-var _ module.Module = (*itemDelayFix)(nil)
-
-type itemDelayFix struct {
-	modulesutil.ToggleableModule
-}
-
-// Name ...
-func (*itemDelayFix) Name() string {
-	return "item delay fix"
-}
-
-// Description ...
-func (*itemDelayFix) Description() string {
-	return "removes attack use delay of 200 ms"
-}
-
-// Edit ...
-func (i *itemDelayFix) Edit(p module.Property, cause e.ActionCause) {
-	modulesutil.SyncState(i, p, cause)
 }

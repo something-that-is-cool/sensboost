@@ -39,7 +39,10 @@ func (conf *ControllerSensitivity) Create(p module.Property, cause e.ActionCause
 		MemoryToSlider: func(f float32) float64 {
 			return math.Ceil(float64(f) * 100)
 		},
-		Ptr: controllerSensitivityPtr,
+		ResolveAddress: func() (uintptr, error) {
+			return mem.ResolvePointerAddress(conf.Process, controllerSensitivityPtr)
+		},
+		ErrorOnInitialRead: true,
 	}
 	f, err := fc.New(cause)
 	if err != nil {
@@ -48,9 +51,12 @@ func (conf *ControllerSensitivity) Create(p module.Property, cause e.ActionCause
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	c := &controllerSensitivity{ModuleWithValue: f}
-	c.Edit(p, cause)
-	return c, nil
+	m := modulesutil.NewBaseValue(f,
+		"controller sensitivity",
+		"allows to modify controller sensitivity to values higher than 100",
+	)
+	m.Edit(p, cause)
+	return m, nil
 }
 
 // DefaultProperty ...
@@ -64,25 +70,4 @@ func (*ControllerSensitivity) DefaultProperty() module.Property {
 // Identifier ...
 func (*ControllerSensitivity) Identifier() string {
 	return "controller_sensitivity"
-}
-
-var _ module.Module = (*controllerSensitivity)(nil)
-
-type controllerSensitivity struct {
-	modulesutil.ModuleWithValue[float64]
-}
-
-// Name ...
-func (*controllerSensitivity) Name() string {
-	return "controller sensitivity"
-}
-
-// Description ...
-func (*controllerSensitivity) Description() string {
-	return "allows to modify controller sensitivity to values higher than 100"
-}
-
-// Edit ...
-func (c *controllerSensitivity) Edit(p module.Property, cause e.ActionCause) {
-	modulesutil.SyncValue[float64](c, p, cause)
 }

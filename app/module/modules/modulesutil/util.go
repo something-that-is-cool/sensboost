@@ -43,24 +43,37 @@ func SyncValue[T any](m ModuleWithValue[T], p module.Property, cause e.ActionCau
 	}
 }
 
-func disableOnlyAction(t ToggleableModule, cause e.ActionCause) error {
-	return t.UpdateState(false, cause, fyneutil.TogglerOptionOnlyCallAction{})
-}
+type PatchFunc = func(Settings) mem.Signature
 
-func PatchFuncExtend(x []byte) func(SignatureSettings) mem.Signature {
-	return func(s SignatureSettings) mem.Signature {
+func PatchFuncExtend(x ...byte) PatchFunc {
+	return func(s Settings) mem.Signature {
 		return s.Signature.ExtendFirst(x)
 	}
 }
 
-func PatchFuncExtendNop(n int) func(SignatureSettings) mem.Signature {
-	return PatchFuncExtend(mem.NopBytes(n))
+func PatchFuncExtendNop(n int) PatchFunc {
+	return PatchFuncExtend(mem.NopBytes(n)...)
 }
 
-func PatchFuncExtendBuilder(b *asm.Builder) func(SignatureSettings) mem.Signature {
-	return func(s SignatureSettings) mem.Signature {
+func PatchFuncExtendBuilder(b *asm.Builder) PatchFunc {
+	return func(s Settings) mem.Signature {
 		sig := b.BuildSignature()
 		b.ClearAndReturn() // the builder must no longer be used
 		return s.Signature.ExtendFirst(sig.Data)
 	}
+}
+
+func disableOnlyAction(t ToggleableModule, cause e.ActionCause) error {
+	return t.UpdateState(false, cause, fyneutil.TogglerOptionOnlyCallAction{})
+}
+
+func extendPatchFunc(conf *Settings) bool {
+	if conf.Patch.Data != nil {
+		return true
+	}
+	if conf.PatchFunc == nil {
+		return false
+	}
+	conf.Patch = conf.PatchFunc(*conf)
+	return conf.Patch.Data != nil
 }

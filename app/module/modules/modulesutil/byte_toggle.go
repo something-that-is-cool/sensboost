@@ -2,9 +2,11 @@ package modulesutil
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/pkg/win"
@@ -13,19 +15,38 @@ import (
 )
 
 type ByteToggleModule struct {
-	Sig     SignatureSettings
-	Process *win.Process
+	Settings Settings
+	Address  func(*win.Process) (uintptr, error)
+	Process  *win.Process
 
 	Error    func(error)
 	OnToggle func(bool, e.ActionCause)
 }
 
-func (conf ByteToggleModule) New() (ToggleableModule, error) {
-	extendPatchFunc(&conf.Sig)
+var ErrMustSetPatch = errors.New("must set patch")
+
+func (conf ByteToggleModule) New() (t ToggleableModule, err error) {
+	var addr uintptr
+	if conf.Settings.Signature.Empty() {
+		if conf.Address == nil {
+			return nil, errors.New("empty address")
+		}
+		addr, err = conf.Address(conf.Process)
+		if err != nil {
+			return nil, fmt.Errorf("get address: %w", err)
+		}
+	}
+	if !extendPatchFunc(&conf.Settings) {
+		return nil, ErrMustSetPatch
+	}
+	if conf.OnToggle == nil {
+		conf.OnToggle = func(bool, e.ActionCause) {}
+	}
 	m := &byteToggleModule{
 		ErrorHandler: errorHandler{err: conf.Error},
-		sig:          conf.Sig,
+		s:            conf.Settings,
 		proc:         conf.Process,
+		addr:         addr,
 	}
 	m.toggler = &fyneutil.Toggler{
 		Handler: m,
@@ -37,9 +58,7 @@ func (conf ByteToggleModule) New() (ToggleableModule, error) {
 			if err = toggler.Set(v); err != nil {
 				return fmt.Errorf("update byte toggler state: %w", err)
 			}
-			if conf.OnToggle != nil {
-				conf.OnToggle(v, cause)
-			}
+			conf.OnToggle(v, cause)
 			return nil
 		},
 	}
@@ -52,20 +71,22 @@ var _ ToggleableModule = (*byteToggleModule)(nil)
 type byteToggleModule struct {
 	e.ErrorHandler
 
-	sig  SignatureSettings
+	s    Settings
 	proc *win.Process
 
 	t *memutil.ByteToggler
 
 	toggler *fyneutil.Toggler
+
+	addr uintptr
 }
 
 func (m *byteToggleModule) UpdateState(v bool, cause e.ActionCause, opts ...any) error {
-	if cause == nil {
-		cause = e.ActionCauseExternal
-	}
 	if m.toggler.Check.Checked == v {
 		return e.ErrValuesIsAlready{Value: v}
+	}
+	if cause == nil {
+		cause = e.ActionCauseExternal
 	}
 	m.toggler.Set(v, cause, opts...)
 	return nil
@@ -86,34 +107,39 @@ func (m *byteToggleModule) Disable(cause e.ActionCause) {
 	m.HandleError("disable byte toggle module", disableOnlyAction(m, cause))
 }
 
-func (m *byteToggleModule) lazyToggler() (*memutil.ByteToggler, error) {
+func (m *byteToggleModule) Edit(p module.Property, cause e.ActionCause) {
+	SyncState(m, p, cause)
+}
+
+func (m *byteToggleModule) lazyToggler() (t *memutil.ByteToggler, err error) {
 	if m.t != nil {
 		return m.t, nil
 	}
-	addr, err := mem.ScanSignature(m.proc, m.sig.Signature)
-	if err != nil {
-		return nil, fmt.Errorf("scan sig: %w", err)
+	addr := m.addr
+	if !m.s.Signature.Empty() {
+		addr, err = mem.ScanSignature(m.proc, m.s.Signature)
+		if err != nil {
+			return nil, fmt.Errorf("scan sig: %w", err)
+		}
 	}
-	patch, err := m.extendSigWildcards(addr, m.sig.Patch)
+	patch, err := m.extendSigWildcards(addr, m.s.Patch)
 	if err != nil {
 		return nil, fmt.Errorf("extend wildcards to patch: %w", err)
 	}
-	original := m.sig.Original.Data
-	if original == nil {
-		original, _ = mem.ReadBytes(m.proc, addr, uint(len(patch)))
+	original, err := mem.ReadBytes(m.proc, addr, uint(len(patch)))
+	if err != nil {
+		return nil, fmt.Errorf("read original bytes: %w", err)
 	}
-	t := &memutil.ByteToggler{
+	if bytes.Equal(original, patch) {
+		m.t.SetState(true)
+	}
+	m.t = &memutil.ByteToggler{
 		Process:  m.proc,
 		Address:  addr,
 		Original: original,
 		Patch:    patch,
 	}
-	currentBytes, err := mem.ReadBytes(m.proc, addr, uint(len(patch)))
-	if err == nil && bytes.Equal(currentBytes, patch) {
-		t.SetState(true)
-	}
-	m.t = t
-	return t, nil
+	return m.t, nil
 }
 
 func (m *byteToggleModule) extendSigWildcards(addr uintptr, patch mem.Signature) ([]byte, error) {

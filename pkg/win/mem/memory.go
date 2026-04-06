@@ -9,11 +9,18 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/win"
 	w "golang.org/x/sys/windows"
 )
 
 func WriteMemory[T any](proc *win.Process, addr uintptr, val T) error {
+	if !proc.Active() {
+		return win.ErrProcessInactive
+	}
+	if addr <= 0 {
+		return ErrZeroAddress
+	}
 	size := unsafe.Sizeof(val)
 
 	oldProtect, err := virtualProtectUnlock(proc, addr, size)
@@ -32,13 +39,15 @@ func WriteMemory[T any](proc *win.Process, addr uintptr, val T) error {
 	return err
 }
 
-func WriteNop(proc *win.Process, addr uintptr, size uint) error {
-	return Patch(proc, addr, NopBytes(int(size)))
-}
-
-func ReadMemory[T any](p *win.Process, addr uintptr, opts ...any) (val T, err error) {
+func ReadMemory[T any](p *win.Process, addr uintptr, protect ...bool) (val T, err error) {
+	if !p.Active() {
+		return val, win.ErrProcessInactive
+	}
+	if addr <= 0 {
+		return val, ErrZeroAddress
+	}
 	size := unsafe.Sizeof(val)
-	if _, protect := handleOptions(opts); protect {
+	if misc.HasTrueOption(protect) {
 		oldProtect, err := virtualProtectUnlock(p, addr, size)
 		if err != nil {
 			return val, fmt.Errorf("virtual protect (unlock): %w", err)
@@ -55,11 +64,17 @@ func ReadMemory[T any](p *win.Process, addr uintptr, opts ...any) (val T, err er
 	return val, err
 }
 
-func ReadBytes(p *win.Process, addr uintptr, size uint, opts ...any) ([]byte, error) {
-	if size == 0 {
-		return nil, errors.New("zero size")
+func ReadBytes(p *win.Process, addr uintptr, size uint, protect ...bool) ([]byte, error) {
+	if !p.Active() {
+		return nil, win.ErrProcessInactive
 	}
-	if _, protect := handleOptions(opts); protect {
+	if addr <= 0 {
+		return nil, ErrZeroAddress
+	}
+	if size == 0 {
+		return nil, ErrZeroSize
+	}
+	if misc.HasTrueOption(protect) {
 		oldProtect, err := virtualProtectUnlock(p, addr, uintptr(size))
 		if err != nil {
 			return nil, fmt.Errorf("virtual protect (unlock): %w", err)
@@ -79,36 +94,49 @@ func ReadBytes(p *win.Process, addr uintptr, size uint, opts ...any) ([]byte, er
 }
 
 func Patch(p *win.Process, addr uintptr, b []byte) error {
+	if !p.Active() {
+		return win.ErrProcessInactive
+	}
+	if addr <= 0 {
+		return ErrZeroAddress
+	}
 	if len(b) == 0 {
-		return errors.New("empty slice")
+		return ErrZeroSize
 	}
-	var oldProtect uint32
-	err := w.VirtualProtectEx(p.Handle, addr, uintptr(len(b)), w.PAGE_EXECUTE_READWRITE, &oldProtect)
+	size := uintptr(len(b))
+
+	oldProtect, err := virtualProtectUnlock(p, addr, size)
 	if err != nil {
-		return fmt.Errorf("virtual protect: %w", err)
+		return fmt.Errorf("virtual protect (unlock): %w", err)
 	}
-	err = w.WriteProcessMemory(p.Handle, addr, &b[0], uintptr(len(b)), nil)
-	if err != nil {
+	defer virtualProtectLock(p, addr, size, oldProtect)
+
+	if err = w.WriteProcessMemory(p.Handle, addr, &b[0], size, nil); err != nil {
 		return fmt.Errorf("write memory: %w", err)
 	}
-	return w.VirtualProtectEx(p.Handle, addr, uintptr(len(b)), oldProtect, &oldProtect)
+	return nil
 }
 
 const sigChunkSize = 1024 * 1024 * 1 // 1 mb
 
-func ScanSignature(proc *win.Process, sig Signature) (uintptr, error) {
-	mod, err := proc.GetModuleInfo()
+func ScanSignature(proc *win.Process, sig Signature, opts ...win.GetModuleInfoOptions) (uintptr, error) {
+	if !proc.Active() {
+		return 0, win.ErrProcessInactive
+	}
+	if sig.Empty() {
+		return 0, ErrEmptySignature
+	}
+	mod, err := proc.GetModuleInfo(opts...)
 	if err != nil {
 		return 0, fmt.Errorf("get module info: %w", err)
 	}
 	buffer := make([]byte, sigChunkSize)
-
 	for offset := uintptr(0); offset < mod.Size; {
 		toRead := uintptr(sigChunkSize)
 		if offset+sigChunkSize > mod.Size {
 			toRead = mod.Size - offset
 		}
-		readable, regionRemaining := RegionInfo(proc.Handle, mod.Address+offset)
+		readable, regionRemaining := regionInfo(proc.Handle, mod.Address+offset)
 		if !readable {
 			offset += regionRemaining
 			continue
@@ -136,11 +164,20 @@ func ScanSignature(proc *win.Process, sig Signature) (uintptr, error) {
 }
 
 func RegionInfo(handle w.Handle, address uintptr) (bool, uintptr) {
-	var mbi w.MemoryBasicInformation
-	if err := w.VirtualQueryEx(handle, address, &mbi, unsafe.Sizeof(mbi)); err != nil {
-		return false, 4096
+	if handle <= 0 {
+		return false, 0
 	}
-	remaining := mbi.RegionSize - (address - mbi.BaseAddress)
+	return regionInfo(handle, address)
+}
+
+func regionInfo(h w.Handle, addr uintptr) (bool, uintptr) {
+	const defaultRegionSize uintptr = 4096
+
+	var mbi w.MemoryBasicInformation
+	if err := w.VirtualQueryEx(h, addr, &mbi, unsafe.Sizeof(mbi)); err != nil {
+		return false, defaultRegionSize
+	}
+	remaining := mbi.RegionSize - (addr - mbi.BaseAddress)
 	return IsReadable(mbi), remaining
 }
 

@@ -10,6 +10,8 @@ const (
 	ToggleDisabled = "disabled"
 )
 
+var ActionCauseUserInput = e.NewActionCause("user input")
+
 type Toggler struct {
 	Handler      e.ErrorHandler
 	Action       func(v bool, cause e.ActionCause) error
@@ -31,7 +33,7 @@ func (t *Toggler) Create() *widget.Check {
 		t.Handler = e.NopErrorHandler{}
 	}
 	if t.DefaultCause == nil {
-		t.DefaultCause = e.ActionCauseExternal
+		t.DefaultCause = ActionCauseUserInput
 	}
 	t.Check.Text = ToggleDisabled
 	prev := t.Check.OnChanged

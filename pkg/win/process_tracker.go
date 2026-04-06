@@ -12,20 +12,15 @@ import (
 )
 
 type ProcessTrackerConfig struct {
-	CloseHandlers []func()
-	Process       *Process
+	OnClose []func()
+	Process *Process
 }
 
 func (conf ProcessTrackerConfig) New() (tr *ProcessTracker, err error) {
 	if conf.Process == nil {
 		return nil, errors.New("nil process")
 	}
-	tr = &ProcessTracker{pr: conf.Process, handlers: conf.CloseHandlers}
-	tr.stop, err = w.CreateEvent(nil, 1, 0, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create stop event: %w", err)
-	}
-	return tr, nil
+	return &ProcessTracker{pr: conf.Process, handlers: conf.OnClose}, nil
 }
 
 type ProcessTracker struct {
@@ -57,16 +52,21 @@ func (tr *ProcessTracker) Close() bool {
 		return true
 	}
 	tr.cancel()
+	tr.closeStopHandle()
 	return true
 }
 
-func (tr *ProcessTracker) Run(parent context.Context) error {
+func (tr *ProcessTracker) closeStopHandle() {
+	_ = w.SetEvent(tr.stop)    // signal WaitForMultipleObjects to exit
+	_ = w.CloseHandle(tr.stop) // then close the handle
+}
+
+func (tr *ProcessTracker) Run(parent context.Context) (err error) {
 	if tr.closed.Load() {
 		return e.ErrClosed
 	}
-	if tr.pr.Handle == w.InvalidHandle {
-		tr.Close()
-		return errors.New("invalid process handle")
+	if !tr.pr.Active() {
+		return ErrProcessInactive
 	}
 	select {
 	case <-parent.Done():
@@ -78,13 +78,17 @@ func (tr *ProcessTracker) Run(parent context.Context) error {
 		tr.running.Unlock()
 		return e.ErrAlreadyRunning
 	}
+	tr.stop, err = w.CreateEvent(nil, 1, 0, nil)
+	if err != nil {
+		return fmt.Errorf("create stop event: %w", err)
+	}
 	tr.ctx, tr.cancel = context.WithCancel(parent)
 	defer tr.cancel()
 
 	tr.running.V = true
 	tr.running.Unlock()
 
-	err := tr.loop() //blocks
+	err = tr.loop() //blocks
 	// call handlers as soon as loop returned
 	for _, fn := range tr.handlers {
 		fn()
@@ -95,7 +99,7 @@ func (tr *ProcessTracker) Run(parent context.Context) error {
 func (tr *ProcessTracker) loop() error {
 	go func() {
 		<-tr.ctx.Done()
-		_ = w.SetEvent(tr.stop)
+		tr.closeStopHandle()
 	}()
 	idx, err := w.WaitForMultipleObjects([]w.Handle{tr.pr.Handle, tr.stop}, false, w.INFINITE)
 	if err != nil {

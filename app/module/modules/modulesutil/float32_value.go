@@ -1,10 +1,12 @@
 package modulesutil
 
 import (
+	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
@@ -12,7 +14,7 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-type Float32Module struct { // so float64 would be DoublePointerModule
+type Float32Module struct {
 	Process *win.Process
 	Error   func(error)
 
@@ -22,15 +24,19 @@ type Float32Module struct { // so float64 would be DoublePointerModule
 	SliderToMemory func(float64) float32
 	MemoryToSlider func(float32) float64
 
-	Ptr            mem.Pointer
 	FinalAddress   uintptr
 	ResolveAddress func() (uintptr, error)
 
 	OnValueChanged func(float64, e.ActionCause)
+
+	ErrorOnInitialRead bool
 }
 
 // New ...
 func (conf Float32Module) New(initialCause e.ActionCause) (ModuleWithValue[float64], error) {
+	if conf.FinalAddress <= 0 && conf.ResolveAddress == nil {
+		return nil, errors.New("must either enter final address or resolve func")
+	}
 	if conf.SliderToMemory == nil {
 		conf.SliderToMemory = func(f float64) float32 { return float32(f) }
 	}
@@ -45,14 +51,17 @@ func (conf Float32Module) New(initialCause e.ActionCause) (ModuleWithValue[float
 		min:          conf.Min,
 		max:          conf.Max,
 		def:          conf.Default,
-		ptr:          conf.Ptr,
 		a:            conf.FinalAddress,
 		resolve:      conf.ResolveAddress,
 	}
 	v, err := f.initialRead()
 	if err != nil {
+		err := fmt.Errorf("initial read: %w", err)
+		if conf.ErrorOnInitialRead {
+			return nil, err
+		}
+		conf.Error(err)
 		v = conf.Default
-		conf.Error(fmt.Errorf("initial read: %w", err))
 	}
 	f.si = &fyneutil.SliderWithTrackedInput{
 		Default:       v,
@@ -87,8 +96,6 @@ type float32Module struct {
 
 	min, max, def float64
 
-	ptr mem.Pointer
-
 	si *fyneutil.SliderWithTrackedInput
 
 	val misc.ValueWithRWMutex[struct {
@@ -107,11 +114,11 @@ func (m *float32Module) CreateObjects() []fyne.CanvasObject {
 
 // SetValue ...
 func (m *float32Module) SetValue(v float64, cause e.ActionCause, opts ...any) error {
-	if cause == nil {
-		cause = e.ActionCauseExternal
-	}
 	if mgl64.FloatEqual(m.si.Slider.Value, v) {
 		return e.ErrValuesIsAlready{Value: v}
+	}
+	if cause == nil {
+		cause = e.ActionCauseExternal
 	}
 	m.si.Set(v, cause, opts...)
 	return nil
@@ -131,6 +138,11 @@ func (m *float32Module) Value() (float64, bool) {
 // Disable ...
 func (m *float32Module) Disable(e.ActionCause) {
 	m.forceWrite(m.def) // already normalizes !!!
+}
+
+// Edit ...
+func (m *float32Module) Edit(p module.Property, cause e.ActionCause) {
+	SyncValue[float64](m, p, cause)
 }
 
 func (m *float32Module) write(val float64) error {
@@ -182,18 +194,10 @@ func (m *float32Module) resolveAddress() (uintptr, error) {
 	if m.a != 0 {
 		return m.a, nil
 	}
-	if m.resolve != nil {
-		a, err := m.resolve()
-		if err != nil {
-			return 0, err
-		}
-		m.a = a
-		return a, nil
-	}
-	addr, err := mem.ResolvePointerAddress(m.proc, m.ptr)
+	a, err := m.resolve()
 	if err != nil {
 		return 0, err
 	}
-	m.a = addr
-	return addr, nil
+	m.a = a
+	return a, nil
 }

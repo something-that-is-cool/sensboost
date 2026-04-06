@@ -1,7 +1,6 @@
 package memutil
 
 import (
-	"fmt"
 	"sync/atomic"
 
 	"github.com/something-that-is-cool/zutil/pkg/e"
@@ -29,7 +28,7 @@ func (t *ByteToggler) Set(v bool) error {
 	}
 	targetAddr := t.Address + t.Offset
 	if err := mem.Patch(t.Process, targetAddr, data); err != nil {
-		return fmt.Errorf("patch at 0x%X: %w", targetAddr, err)
+		return mem.ErrPatchAt{Address: targetAddr, Parent: err}
 	}
 	t.state.Store(v)
 	return nil
@@ -44,5 +43,5 @@ func (t *ByteToggler) Enabled() bool {
 }
 
 func (t *ByteToggler) SetState(b bool) {
-	t.state.CompareAndSwap(!b, b)
+	t.state.Store(b)
 }

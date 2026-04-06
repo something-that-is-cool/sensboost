@@ -11,7 +11,7 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var noDynamicFovSig = modulesutil.SignatureSettings{
+var noDynamicFovSettings = modulesutil.Settings{
 	Signature: mem.MustParseSignature("F3 0F 11 83 ? ? ? ? 48 8B 83 ? ? ? ? 48 8B 48"),
 	PatchFunc: modulesutil.PatchFuncExtendNop(8), // patch first 8 bytes of sig to nop
 }
@@ -27,51 +27,33 @@ type NoDynamicFov struct {
 
 func (conf *NoDynamicFov) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.ByteToggleModule{
-		Sig:     noDynamicFovSig,
-		Process: conf.Process,
-		Error:   conf.Error,
+		Settings: noDynamicFovSettings,
+		Process:  conf.Process,
+		Error:    conf.Error,
 	}
 	cl := &fovClamper{proc: conf.Process, err: conf.Error}
 	c.OnToggle = func(b bool, cause e.ActionCause) {
 		cl.clamp()
 		conf.OnToggle(b, cause)
 	}
-	t, err := c.New()
+	b, err := c.New()
 	if err != nil {
-		return nil, fmt.Errorf("create sig toggle module: %w", err)
+		return nil, fmt.Errorf("create byte toggle module: %w", err)
 	}
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	n := &noDynamicFov{ToggleableModule: t}
-	n.Edit(p, cause)
-	return n, nil
+	m := modulesutil.NewBaseToggleable(b,
+		"no dynamic fov",
+		"prevents game to write new field of view dynamically",
+	)
+	m.Edit(p, cause)
+	return m, nil
 }
 
 // Identifier ...
 func (*NoDynamicFov) Identifier() string {
 	return "no_dynamic_fov"
-}
-
-var _ module.Module = (*noDynamicFov)(nil)
-
-type noDynamicFov struct {
-	modulesutil.ToggleableModule
-}
-
-// Name ...
-func (*noDynamicFov) Name() string {
-	return "no dynamic fov"
-}
-
-// Description ...
-func (*noDynamicFov) Description() string {
-	return "forces game to think that your field of view is static"
-}
-
-// Edit ...
-func (n *noDynamicFov) Edit(p module.Property, cause e.ActionCause) {
-	modulesutil.SyncState(n, p, cause)
 }
 
 var fovPtr = mem.MustParsePointer(

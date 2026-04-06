@@ -110,7 +110,7 @@ func (app *App) onModuleToggled(id string) func(bool, e.ActionCause) {
 		app.editProperty(id, func(p *module.Property) {
 			p.Enabled = b
 		})
-		app.conf.Logger.Debug("module toggled", "module", id, "new_state", b)
+		app.conf.Logger.Debug("module toggled", "module", id, "new_state", b, "cause", cause.String())
 	}
 }
 
@@ -122,7 +122,7 @@ func onModuleValueChanged[T any](app *App, id string) func(T, e.ActionCause) {
 		app.editProperty(id, func(p *module.Property) {
 			p.Value = v
 		})
-		app.conf.Logger.Debug("module value changed", "module", id, "new_val", v)
+		app.conf.Logger.Debug("module value changed", "module", id, "new_val", v, "cause", cause.String())
 	}
 }
 

@@ -9,8 +9,16 @@ func Rune(s string) rune {
 	return []rune(s)[0]
 }
 
-func InAlphabet(r rune) bool {
-	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
+func RuneInAlphabet(r rune) bool {
+	return RuneInLowerAlphabet(r) || RuneInUpperAlphabet(r)
+}
+
+func RuneInLowerAlphabet(r rune) bool {
+	return r >= 'a' && r <= 'z'
+}
+
+func RuneInUpperAlphabet(r rune) bool {
+	return r >= 'A' && r <= 'Z'
 }
 
 func SortByAlphabet(x []string) {
@@ -26,7 +34,7 @@ func CompareStringAlphabet(s string) int {
 	if len(s) != 1 {
 		return len(s) + 2
 	}
-	if InAlphabet(Rune(s)) {
+	if RuneInAlphabet(Rune(s)) {
 		return len(s) + 1
 	}
 	return len(s) + 3

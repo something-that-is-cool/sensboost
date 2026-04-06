@@ -11,7 +11,7 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
-var autoSprintSig = modulesutil.SignatureSettings{
+var autoSprintSettings = modulesutil.Settings{
 	Signature: mem.MustParseSignature("0F B6 41 ? 40 32 ED"),
 	PatchFunc: modulesutil.PatchFuncExtendBuilder(asm.Build().
 		MovAxImm8(0x01).
@@ -31,7 +31,7 @@ type AutoSprint struct {
 
 func (conf *AutoSprint) Create(p module.Property, cause e.ActionCause) (module.Module, error) {
 	c := &modulesutil.ByteToggleModule{
-		Sig:      autoSprintSig,
+		Settings: autoSprintSettings,
 		Process:  conf.Process,
 		Error:    conf.Error,
 		OnToggle: conf.OnToggle,
@@ -43,7 +43,10 @@ func (conf *AutoSprint) Create(p module.Property, cause e.ActionCause) (module.M
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	m := &autoSprint{ToggleableModule: b}
+	m := modulesutil.NewBaseToggleable(b,
+		"auto sprint",
+		"automatically sprints for you",
+	)
 	m.Edit(p, cause)
 	return m, nil
 }
@@ -51,25 +54,4 @@ func (conf *AutoSprint) Create(p module.Property, cause e.ActionCause) (module.M
 // Identifier ...
 func (*AutoSprint) Identifier() string {
 	return "auto_sprint"
-}
-
-var _ module.Module = (*autoSprint)(nil)
-
-type autoSprint struct {
-	modulesutil.ToggleableModule
-}
-
-// Name ...
-func (*autoSprint) Name() string {
-	return "auto sprint"
-}
-
-// Description ...
-func (*autoSprint) Description() string {
-	return "automatically sprints for you"
-}
-
-// Edit ...
-func (a *autoSprint) Edit(p module.Property, cause e.ActionCause) {
-	modulesutil.SyncState(a, p, cause)
 }
