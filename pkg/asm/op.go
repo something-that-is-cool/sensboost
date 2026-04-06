@@ -1,6 +1,9 @@
 package asm
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"math"
+)
 
 func Jmp(from, to uintptr) []byte {
 	offset := int32(to - (from + 5))
@@ -55,4 +58,23 @@ func MovssXmmToRax(xmm byte) []byte {
 
 func MovssXmm0Rax() []byte {
 	return []byte{0xF3, 0x0F, 0x10, 0x00}
+}
+
+func MovRdx64(val uintptr) []byte {
+	res := make([]byte, 10)
+	res[0] = 0x48
+	res[1] = 0xBA
+	binary.LittleEndian.PutUint64(res[2:], uint64(val))
+	return res
+}
+
+func MovMemsdRDX(offset byte, val float32) []byte {
+	res := []byte{0xC7, 0x42, offset}
+	return append(res, Float(val)...)
+}
+
+func Float(val float32) []byte {
+	res := make([]byte, 4)
+	binary.LittleEndian.PutUint32(res, math.Float32bits(val))
+	return res
 }

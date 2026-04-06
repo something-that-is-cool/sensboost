@@ -103,6 +103,18 @@ func (b *Builder) MovssXmm0Rax() *Builder {
 	return b.Raw(MovssXmm0Rax()...)
 }
 
+func (b *Builder) MovRdx(val uintptr) *Builder {
+	return b.Raw(MovRdx64(val)...)
+}
+
+func (b *Builder) MovMemsdRDX(offset byte, val float32) *Builder {
+	return b.Raw(MovMemsdRDX(offset, val)...)
+}
+
+func (b *Builder) Float(val float32) *Builder {
+	return b.Raw(Float(val)...)
+}
+
 func (b *Builder) Clear() *Builder {
 	b.buf.Reset()
 	b.mask.Reset()
