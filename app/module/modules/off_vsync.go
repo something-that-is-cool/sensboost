@@ -103,7 +103,7 @@ func (o *offVsync) CreateObjects() []fyne.CanvasObject {
 
 // Disable ...
 func (o *offVsync) Disable(cause e.ActionCause) {
-	o.t.Set(false, cause)
+	o.t.Set(false, cause, fyneutil.TogglerOptionOnlyCallAction{})
 }
 
 // UpdateState ...
