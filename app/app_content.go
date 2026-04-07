@@ -22,7 +22,7 @@ func (app *App) createContent(modules *modulesMap, w fyne.Window) (fyne.CanvasOb
 		window := app.createModuleWindow(mod, c, w)
 		obj = append(obj, window)
 	}
-	a := container.NewGridWithRows(4, obj...)
+	a := container.NewGridWithRows(5, obj...)
 	// creating scroll prevents from minimizing bug
 	return container.NewVScroll(fyneutil.WithFooter(a, f)), nil
 }

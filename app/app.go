@@ -98,7 +98,7 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 	return nil
 }
 
-const windowWidth, windowHeight = 450, 550
+const windowWidth, windowHeight = 450, 650
 
 func (app *App) deployFyne() {
 	app.app = fyneapp.NewWithID(ID)

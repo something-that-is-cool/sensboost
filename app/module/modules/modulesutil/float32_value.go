@@ -44,7 +44,7 @@ func (conf Float32Module) New(initialCause e.ActionCause) (ModuleWithValue[float
 		conf.MemoryToSlider = func(f float32) float64 { return float64(f) }
 	}
 	f := &float32Module{
-		ErrorHandler: errorHandler{err: conf.Error},
+		ErrorHandler: ErrorHandler{Error: conf.Error},
 		proc:         conf.Process,
 		sToM:         conf.SliderToMemory,
 		mToS:         conf.MemoryToSlider,

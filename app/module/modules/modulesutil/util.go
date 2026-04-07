@@ -16,21 +16,21 @@ func (DefaultDisabled) DefaultProperty() module.Property {
 	return module.Property{Enabled: false}
 }
 
-var _ e.ErrorHandler = (*errorHandler)(nil)
+var _ e.ErrorHandler = (*ErrorHandler)(nil)
 
-type errorHandler struct {
-	err func(error)
+type ErrorHandler struct {
+	Error func(error)
 }
 
-func (h errorHandler) HandleError(src string, err error) {
+func (h ErrorHandler) HandleError(src string, err error) {
 	if err == nil {
 		return
 	}
 	if src == "" {
-		h.err(err)
+		h.Error(err)
 		return
 	}
-	h.err(fmt.Errorf("%s: %w", src, err))
+	h.Error(fmt.Errorf("%s: %w", src, err))
 }
 
 func SyncState(m ToggleableModule, p module.Property, cause e.ActionCause) {

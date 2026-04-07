@@ -43,7 +43,7 @@ func (conf ByteToggleModule) New() (t ToggleableModule, err error) {
 		conf.OnToggle = func(bool, e.ActionCause) {}
 	}
 	m := &byteToggleModule{
-		ErrorHandler: errorHandler{err: conf.Error},
+		ErrorHandler: ErrorHandler{Error: conf.Error},
 		s:            conf.Settings,
 		proc:         conf.Process,
 		addr:         addr,
