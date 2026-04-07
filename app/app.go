@@ -127,8 +127,8 @@ func (app *App) Run() error {
 	}
 	app.conf.Logger.Info("running window...")
 	app.win.ShowAndRun() // blocks
-	close(done)
 	// wait for graceful window closure...
+	close(done)
 	app.conf.Logger.Info("window closed gracefully.")
 	return nil
 }
@@ -234,7 +234,6 @@ func (app *App) closeIfStarted(cause e.CloseCause) {
 		// save the user config
 		app.saveUserConfig(app.app)
 	}
-	fmt.Println(cause)
 	// if closed because parent process closed, we don't need to disable
 	// all modules as it will not affect
 	if app.data.V.modulesInit && !e.CloseCauseIs(cause, closeCauseTrackerClosed) {
