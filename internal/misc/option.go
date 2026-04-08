@@ -20,7 +20,7 @@ func MustFirstOptionCastOr[T any](x []any, or T) T {
 		return or
 	}
 	v, ok := x[0].(T)
-	if ok {
+	if !ok {
 		return or
 	}
 	return v
