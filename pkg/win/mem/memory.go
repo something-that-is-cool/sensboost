@@ -21,7 +21,7 @@ func WriteMemory[T any](proc *win.Process, addr uintptr, val T) error {
 	if addr <= 0 {
 		return ErrZeroAddress
 	}
-	size := unsafe.Sizeof(val)
+	size := unsafe.Sizeof(val) //todo: maybe make some sort of SizeOf method that checks if this is slice, also accepting custom OptionSize
 
 	oldProtect, err := virtualProtectUnlock(proc, addr, size)
 	if err != nil {

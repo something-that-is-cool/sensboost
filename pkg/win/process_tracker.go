@@ -90,9 +90,7 @@ func (tr *ProcessTracker) Run(parent context.Context) (err error) {
 
 	err = tr.loop() //blocks
 	// call handlers as soon as loop returned
-	for _, fn := range tr.handlers {
-		fn()
-	}
+	misc.CallMethods(tr.handlers)
 	return err
 }
 

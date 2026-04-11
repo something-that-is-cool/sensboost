@@ -245,6 +245,7 @@ func (app *App) closeIfStarted(cause e.CloseCause) {
 }
 
 func (app *App) disableModulesUnsafe() {
+	//Disable method of module.Module must be NOT fyne-obsessed, else it'll cause bugs
 	app.conf.Logger.Debug("disabling modules...")
 	defer app.conf.Logger.Debug("disabled modules.")
 
