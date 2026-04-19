@@ -14,8 +14,8 @@ import (
 var autoSprintSettings = modulesutil.Settings{
 	Signature: mem.MustParseSignature("0F B6 41 ? 40 32 ED"),
 	PatchFunc: modulesutil.PatchFuncExtendBuilder(asm.Build().
-		MovAxImm8(0x01).
-		Wildcard().
+		MovAxImm8(0x1).
+		X().
 		XorChBpl(),
 	),
 }

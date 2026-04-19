@@ -14,7 +14,7 @@ import (
 
 var (
 	offVsyncOffset1 uintptr = 0x72EC22
-	offVsyncOffset2 uintptr = 0x72EC32
+	offVsyncOffset2         = offVsyncOffset1 + 0x10
 )
 
 type OffVsync struct {

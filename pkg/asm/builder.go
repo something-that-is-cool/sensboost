@@ -27,7 +27,7 @@ func Build() *Builder {
 
 func (b *Builder) write(data ...byte) {
 	b.buf.Write(data)
-	for i := 0; i < len(data); i++ {
+	for range len(data) {
 		b.mask.WriteByte('x')
 	}
 }
@@ -48,7 +48,7 @@ func (b *Builder) ZeroByte() *Builder {
 	return b.Raw(0x00)
 }
 
-func (b *Builder) Wildcard() *Builder {
+func (b *Builder) X() *Builder {
 	b.buf.WriteByte(0x00)
 	b.mask.WriteByte('?')
 	return b
