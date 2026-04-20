@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/win/mem"
 )
 
@@ -27,9 +28,7 @@ func Build() *Builder {
 
 func (b *Builder) write(data ...byte) {
 	b.buf.Write(data)
-	for range len(data) {
-		b.mask.WriteByte('x')
-	}
+	b.mask.WriteString(mem.FullMask(len(data)))
 }
 
 func (b *Builder) Result() []byte {
@@ -37,21 +36,22 @@ func (b *Builder) Result() []byte {
 }
 
 func (b *Builder) BuildSignature() mem.Signature {
-	sig := mem.Signature{
-		Data: b.buf.Bytes(),
-		Mask: b.mask.String(),
-	}
-	return sig
+	return mem.Signature{Data: b.buf.Bytes(), Mask: b.mask.String()}
 }
 
 func (b *Builder) ZeroByte() *Builder {
 	return b.Raw(0x00)
 }
 
-func (b *Builder) X() *Builder {
+func (b *Builder) Wildcard() *Builder {
 	b.buf.WriteByte(0x00)
 	b.mask.WriteByte('?')
 	return b
+}
+
+// X is alias to Wildcard.
+func (b *Builder) X() *Builder {
+	return b.Wildcard()
 }
 
 func (b *Builder) Raw(v ...byte) *Builder {
@@ -71,16 +71,16 @@ func (b *Builder) Jmp(from, to uintptr) *Builder {
 	return b.Raw(Jmp(from, to)...)
 }
 
-func (b *Builder) MovRax64(address uintptr) *Builder {
-	return b.Raw(MovRax64(address)...)
+func (b *Builder) Mov64(reg Register, address uintptr) *Builder {
+	return b.Raw(Mov64(reg, address)...)
 }
 
-func (b *Builder) PushRax() *Builder {
-	return b.Raw(PushRax())
+func (b *Builder) PushRax(reg Register) *Builder {
+	return b.Raw(Push(reg)...)
 }
 
-func (b *Builder) PopRax() *Builder {
-	return b.Raw(PopRax())
+func (b *Builder) Pop(reg Register) *Builder {
+	return b.Raw(Pop(reg)...)
 }
 
 func (b *Builder) Pushfq() *Builder {
@@ -103,16 +103,31 @@ func (b *Builder) MovssXmm0Rax() *Builder {
 	return b.Raw(MovssXmm0Rax()...)
 }
 
-func (b *Builder) MovRdx(val uintptr) *Builder {
-	return b.Raw(MovRdx64(val)...)
-}
-
 func (b *Builder) MovMemsdRDX(offset byte, val float32) *Builder {
 	return b.Raw(MovMemsdRDX(offset, val)...)
 }
 
 func (b *Builder) Float(val float32) *Builder {
-	return b.Raw(Float(val)...)
+	return b.Raw(LEFloat(val)...)
+}
+
+// Float64 is alias to Double.
+func (b *Builder) Float64(val float64) *Builder {
+	return b.Double(val)
+}
+
+func (b *Builder) Double(val float64) *Builder {
+	return b.Raw(LEDouble(val)...)
+}
+
+func (b *Builder) Nop(amount ...int) *Builder {
+	n := misc.MustFirstOptionOr(amount, 1)
+
+	res := make([]byte, 0, n)
+	for range n {
+		res = append(res, Nop())
+	}
+	return b.Raw(res...)
 }
 
 func (b *Builder) Clear() *Builder {

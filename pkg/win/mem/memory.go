@@ -119,6 +119,8 @@ func Patch(p *win.Process, addr uintptr, b []byte) error {
 
 const sigChunkSize = 1024 * 1024 * 1 // 1 mb
 
+var ErrSignatureNotFound = errors.New("signature not found")
+
 func ScanSignature(proc *win.Process, sig Signature, opts ...win.GetModuleInfoOptions) (uintptr, error) {
 	if !proc.Active() {
 		return 0, win.ErrProcessInactive
@@ -160,7 +162,7 @@ func ScanSignature(proc *win.Process, sig Signature, opts ...win.GetModuleInfoOp
 		}
 		offset += toRead - uintptr(len(sig.Data)) + 1
 	}
-	return 0, errors.New("signature not found")
+	return 0, ErrSignatureNotFound
 }
 
 func RegionInfo(handle w.Handle, address uintptr) (bool, uintptr) {
@@ -227,7 +229,7 @@ func virtualProtectLock(proc *win.Process, addr, size uintptr, p uint32) {
 func NopBytes(size int) []byte {
 	res := make([]byte, 0, size)
 	for range size {
-		res = append(res, 0x90)
+		res = append(res, 0x90) //fixme: asm.Nop (import cycle)
 	}
 	return res
 }

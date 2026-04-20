@@ -92,6 +92,7 @@ func (app *App) onError(mod string) func(err error) {
 			return
 		}
 		app.conf.Logger.Error("an error occurred", "module", mod, "err", err.Error())
+		//app.showError(err)
 	}
 }
 

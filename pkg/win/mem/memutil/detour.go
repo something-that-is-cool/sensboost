@@ -88,11 +88,12 @@ func (d *Detour) init() (err error) {
 }
 
 func (d *Detour) EnableProxy(proxyAddr uintptr, xmmIndex byte) error {
-	shell := append([]byte(nil), asm.Pushfq(), asm.PushRax())
-	shell = append(shell, asm.MovRax64(proxyAddr)...)
+	shell := append([]byte(nil), asm.Pushfq())
+	shell = append(shell, asm.Push(asm.Rax)...)
+	shell = append(shell, asm.Mov64(asm.Rax, proxyAddr)...)
 	shell = append(shell, asm.MovssXmmToRax(xmmIndex)...)
-	shell = append(shell, asm.PopRax(), asm.Popfq())
-	return d.EnableWithCode(shell)
+	shell = append(shell, asm.Pop(asm.Rax)...)
+	return d.EnableWithCode(append(shell, asm.Popfq()))
 }
 
 func (d *Detour) applyTargetPatch() error {

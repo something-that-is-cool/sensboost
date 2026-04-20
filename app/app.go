@@ -221,6 +221,9 @@ func (app *App) closeLogic(cause e.CloseCause) error {
 	return nil
 }
 
+//todo: some "component" interface with methods Initialized() or PartiallyInitialized() to close all components properly even if they didnt fully
+// initialized, example: first module initializes, second throws an error and the program closes. this causes to first module be unclosed
+
 func (app *App) closeIfStarted(cause e.CloseCause) {
 	app.data.Lock()
 	defer app.data.Unlock() // release lock earlier because we don't want to lock until wg done
@@ -245,7 +248,7 @@ func (app *App) closeIfStarted(cause e.CloseCause) {
 }
 
 func (app *App) disableModulesUnsafe() {
-	//Disable method of module.Module must be NOT fyne-obsessed, else it'll cause bugs
+	//Disable method of module.Module must be NOT fyne-obsessed, it'll cause bugs instead
 	app.conf.Logger.Debug("disabling modules...")
 	defer app.conf.Logger.Debug("disabled modules.")
 

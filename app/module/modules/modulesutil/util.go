@@ -55,10 +55,10 @@ func PatchFuncExtendNop(n int) PatchFunc {
 	return PatchFuncExtend(mem.NopBytes(n)...)
 }
 
-func PatchFuncExtendBuilder(b *asm.Builder) PatchFunc {
+func PatchFuncExtendBuilder(b *asm.Builder) PatchFunc { // the builder must no longer be used after this func ends
 	return func(s Settings) mem.Signature {
 		sig := b.BuildSignature()
-		b.ClearAndReturn() // the builder must no longer be used
+		b.ClearAndReturn()
 		return s.Signature.ExtendFirst(sig.Data)
 	}
 }
