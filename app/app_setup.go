@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/elliotchance/orderedmap/v3"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/pkg/e"
@@ -36,7 +38,7 @@ func (app *App) createModulesFromConfigs(configs []module.Config) (*modulesMap, 
 	for _, m := range toCreate {
 		mod, err := m.Config.Create(m.Property, actionCauseModuleCreated)
 		if err != nil {
-			multiErr = multierr.Append(multiErr, err)
+			multiErr = multierr.Append(multiErr, fmt.Errorf("create %q: %w", m.Config.Identifier(), err))
 			continue
 		}
 		ok = true // at least one module created

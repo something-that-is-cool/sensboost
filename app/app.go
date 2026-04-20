@@ -60,6 +60,8 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 	}
 	app.data.V.uConfInit = true
 	app.syncTheme(app.userConf.V)
+
+	showErrors := app.userConf.V.ShowErrors
 	app.userConf.Unlock()
 
 	app.conf.Logger.Debug("creating module configs...")
@@ -77,6 +79,9 @@ func (app *App) initUnsafe(proc *win.Process) (err error) {
 	}
 	if err != nil {
 		app.conf.Logger.Error("error creating modules from configs", "err", err.Error())
+		if showErrors {
+			app.showError("create module(s) from config(s)", err)
+		}
 	} else {
 		app.conf.Logger.Debug("created modules from configs.")
 	}

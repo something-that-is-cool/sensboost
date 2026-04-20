@@ -16,6 +16,7 @@ type UserConfig struct {
 	Binds      map[string]string          `json:"binds"` // module_id => char
 	CharBinds  map[string]string          `json:"-"`     // char => module_id
 	LightTheme bool                       `json:"light_theme"`
+	ShowErrors bool                       `json:"show_errors"`
 }
 
 func DefaultUserConfig() *UserConfig {
@@ -24,6 +25,7 @@ func DefaultUserConfig() *UserConfig {
 		Binds:      make(map[string]string),
 		CharBinds:  make(map[string]string),
 		LightTheme: false,
+		ShowErrors: true,
 	}
 }
 
@@ -33,7 +35,7 @@ func (app *App) loadUserConfigUnsafe(a fyne.App) (conf *UserConfig, err error) {
 	root := app.getRootPath(a)
 	path := filepath.Join(root, ConfigFilename)
 
-	_ = os.MkdirAll(filepath.Dir(path), 0755)
+	_ = os.MkdirAll(filepath.Dir(path), filePerm)
 
 	d, err := os.ReadFile(path)
 	switch {
@@ -132,7 +134,10 @@ func (app *App) editProperty(id string, fn func(*module.Property)) {
 	app.userConf.Lock()
 	defer app.userConf.Unlock()
 
-	p := app.userConf.V.Modules[id]
+	p, ok := app.userConf.V.Modules[id]
+	if !ok {
+		return
+	}
 	fn(&p)
 	// update the property
 	app.userConf.V.Modules[id] = p

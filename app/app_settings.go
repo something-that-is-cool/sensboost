@@ -50,6 +50,7 @@ func (app *App) showSettings() {
 		widget.NewButton("Import config", app.importConfig),
 		widget.NewButton("Export config", app.exportConfig),
 		widget.NewButton("Reset config", app.resetConfig),
+		fyneutil.LeftAndRight(widget.NewLabel("Show errors"), app.newShowErrorsCheck()),
 	)
 	app.data.Lock()
 	defer app.data.Unlock()
@@ -60,7 +61,7 @@ func (app *App) showSettings() {
 func (app *App) importConfig() {
 	dialog.ShowFileOpen(func(reader fyne.URIReadCloser, err error) {
 		if err != nil {
-			app.showError(fmt.Errorf("import: %w", err))
+			app.showError("import config", err)
 			return
 		}
 		if reader == nil {
@@ -69,7 +70,7 @@ func (app *App) importConfig() {
 		}
 		defer reader.Close() //nolint:errcheck
 		if err = app.doImport(reader); err != nil {
-			app.showError(fmt.Errorf("import: %w", err))
+			app.showError("import config", err)
 			return
 		}
 		app.showInfo("Import", misc.JoinNewLine(
@@ -98,7 +99,7 @@ func (app *App) doImport(reader fyne.URIReadCloser) error {
 func (app *App) exportConfig() {
 	dialog.ShowFileSave(func(writer fyne.URIWriteCloser, err error) {
 		if err != nil {
-			app.showError(fmt.Errorf("export: %w", err))
+			app.showError("export config", err)
 			return
 		}
 		if writer == nil {
@@ -107,7 +108,7 @@ func (app *App) exportConfig() {
 		}
 		defer writer.Close() //nolint:errcheck
 		if err = app.doExport(writer); err != nil {
-			app.showError(fmt.Errorf("export: %w", err))
+			app.showError("export config", err)
 			return
 		}
 		app.showInfo("Export config", misc.JoinNewLine(
@@ -137,6 +138,31 @@ var actionCauseResetConfig = e.NewActionCause("reset config")
 func (app *App) resetConfig() {
 	toEdit := app.applyConfig(DefaultUserConfig())
 	app.doModuleUpdates(toEdit, actionCauseResetConfig)
+}
+
+var actionCauseJustCreated = e.NewActionCause("just created")
+
+func (app *App) newShowErrorsCheck() *widget.Check {
+	toggler := &fyneutil.Toggler{
+		Handler: app,
+		Action: func(v bool, cause e.ActionCause) error {
+			app.showErrors(v, cause)
+			return nil
+		},
+	}
+	toggler.Create()
+	toggler.Set(func() bool {
+		app.userConf.Lock()
+		defer app.userConf.Unlock()
+		return app.userConf.V.ShowErrors
+	}(), actionCauseJustCreated)
+	return toggler.Check
+}
+
+func (app *App) showErrors(state bool, _ e.ActionCause) {
+	app.userConf.Lock()
+	defer app.userConf.Unlock()
+	app.userConf.V.ShowErrors = state
 }
 
 func (app *App) applyConfig(newConf *UserConfig) map[module.Module]module.Property {

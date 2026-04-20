@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
@@ -23,8 +24,8 @@ func (app *App) showInfo(title, msg string) {
 	dialog.ShowInformation(title, msg, app.win)
 }
 
-func (app *App) showError(err error) {
-	dialog.ShowError(err, app.win)
+func (app *App) showError(title string, err error) {
+	app.showInfo(fmt.Sprintf("Error: %q", title), err.Error())
 }
 
 func (app *App) doModuleUpdates(updates map[module.Module]module.Property, cause e.ActionCause) {
@@ -49,4 +50,22 @@ func (app *App) doClose(name string, fn func() error) {
 		return
 	}
 	app.conf.Logger.Info("closed " + name + ".")
+}
+
+func (app *App) ifUserConf(x func(*UserConfig) bool, fn func()) {
+	res := false
+	func() {
+		app.userConf.Lock()
+		defer app.userConf.Unlock()
+		res = x(app.userConf.V)
+	}()
+	if res {
+		fn()
+	}
+}
+
+var _ e.ErrorHandler = (*App)(nil)
+
+func (app *App) HandleError(src string, err error) {
+	app.conf.Logger.Error("error handled", "src", src, "err", err.Error())
 }
