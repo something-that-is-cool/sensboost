@@ -4,6 +4,7 @@ go 1.26.2
 
 require (
 	fyne.io/fyne/v2 v2.7.3
+	gioui.org v0.9.0
 	github.com/Marlliton/slogpretty v0.1.3
 	github.com/ebitengine/hideconsole v1.0.0
 	github.com/elliotchance/orderedmap/v3 v3.1.0
@@ -18,6 +19,7 @@ require (
 
 require (
 	fyne.io/systray v1.12.0 // indirect
+	gioui.org/shader v1.0.8 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dblohm7/wingoes v0.0.0-20250822163801-6d8e6105c62d // indirect
@@ -63,6 +65,7 @@ require (
 	github.com/yuin/goldmark v1.8.2 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
+	golang.org/x/exp/shiny v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/image v0.39.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
