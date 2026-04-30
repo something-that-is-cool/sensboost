@@ -9,13 +9,13 @@ import (
 	w "golang.org/x/sys/windows"
 )
 
-func FindPID(name string, caseSensitive ...bool) uint32 {
+func FindPID(name string, caseInsensitive ...bool) uint32 {
 	processes, err := robotgo.Process()
 	if err != nil {
 		return 0
 	}
 	for _, proc := range processes {
-		if misc.CompareString(proc.Name, name, caseSensitive...) {
+		if misc.CompareString(proc.Name, name, caseInsensitive...) {
 			return uint32(proc.Pid)
 		}
 	}
