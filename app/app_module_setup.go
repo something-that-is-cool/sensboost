@@ -20,6 +20,7 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 		app.createItemDelayFixModule(proc),
 		app.createNoCamResetModule(proc),
 		app.createOffVsyncModule(proc),
+		app.createNoSensOffsetModule(proc),
 	}
 }
 
@@ -81,6 +82,13 @@ func (app *App) createNoCamResetModule(proc *win.Process) module.Config {
 
 func (app *App) createOffVsyncModule(proc *win.Process) module.Config {
 	conf := &modules.OffVsync{Process: proc}
+	conf.Error = app.onError(conf.Identifier())
+	conf.OnToggle = app.onModuleToggled(conf.Identifier())
+	return conf
+}
+
+func (app *App) createNoSensOffsetModule(proc *win.Process) module.Config {
+	conf := &modules.NoSensOffset{Process: proc}
 	conf.Error = app.onError(conf.Identifier())
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
