@@ -87,7 +87,7 @@ func (d *Detour) init() (err error) {
 	return nil
 }
 
-func (d *Detour) EnableProxy(proxyAddr uintptr, xmmIndex byte) error {
+func (d *Detour) enableProxy(proxyAddr uintptr, xmmIndex byte) error {
 	shell := append([]byte(nil), asm.Pushfq())
 	shell = append(shell, asm.Push(asm.Rax)...)
 	shell = append(shell, asm.Mov64(asm.Rax, proxyAddr)...)

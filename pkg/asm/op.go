@@ -82,8 +82,7 @@ func MovssXmm0Rax() []byte {
 }
 
 func MovMemsdRDX(offset byte, val float32) []byte {
-	res := []byte{0xC7, 0x42, offset}
-	return append(res, LEFloat(val)...)
+	return append([]byte{0xC7, 0x42, offset}, LEFloat(val)...)
 }
 
 //todo: add, sub, xor
@@ -97,6 +96,18 @@ func LEFloat(val float32) []byte {
 func LEDouble(val float64) []byte {
 	res := make([]byte, unsafe.Sizeof(val))
 	binary.LittleEndian.PutUint64(res, math.Float64bits(val))
+	return res
+}
+
+func LEUint64(val uint64) []byte {
+	res := make([]byte, unsafe.Sizeof(val))
+	binary.LittleEndian.PutUint64(res, val)
+	return res
+}
+
+func LEUint32(val uint32) []byte {
+	res := make([]byte, unsafe.Sizeof(val))
+	binary.LittleEndian.PutUint32(res, val)
 	return res
 }
 

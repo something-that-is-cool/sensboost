@@ -59,6 +59,13 @@ func (b *Builder) Raw(v ...byte) *Builder {
 	return b
 }
 
+func (b *Builder) RawStr(v string) *Builder {
+	if sig, err := mem.ParseSignature(v); err == nil {
+		b.write(sig.Data...)
+	}
+	return b
+}
+
 func (b *Builder) MovAxImm8(val byte) *Builder {
 	return b.Raw(MovAxImm8(val)...)
 }
@@ -105,6 +112,22 @@ func (b *Builder) MovssXmm0Rax() *Builder {
 
 func (b *Builder) MovMemsdRDX(offset byte, val float32) *Builder {
 	return b.Raw(MovMemsdRDX(offset, val)...)
+}
+
+func (b *Builder) DivssXmm(xmmIndex byte, reg Register) *Builder {
+	return b.Raw(DivssXmmMem64(xmmIndex, reg)...)
+}
+
+func (b *Builder) MulssXmm(xmmIndex byte, reg Register) *Builder {
+	return b.Raw(MulssXmmMem64(xmmIndex, reg)...)
+}
+
+func (b *Builder) AddssXmm(xmmIndex byte, reg Register) *Builder {
+	return b.Raw(AddssXmmMem64(xmmIndex, reg)...)
+}
+
+func (b *Builder) SubssXmm(xmmIndex byte, reg Register) *Builder {
+	return b.Raw(SubssXmmMem64(xmmIndex, reg)...)
 }
 
 func (b *Builder) Float(val float32) *Builder {
