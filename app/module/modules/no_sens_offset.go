@@ -45,7 +45,7 @@ func (conf *NoSensOffset) Create(p module.Property, cause e.ActionCause) (module
 	}
 	m := modulesutil.NewBaseToggleable(b,
 		"no sens offset",
-		"removes hardcoded 0.30000001 offset to sensitivity",
+		"removes hardcoded 0.30000001 offset of sensitivity to make it more similar to bedrock sensitivity (but it still doesn't match bedrock logic). affects both platforms (kbm & controller). pretty much useless on controller",
 	)
 	m.Edit(p, cause)
 	return m, nil
