@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -20,8 +21,13 @@ import (
 var aboutMessage = misc.JoinNewLine(
 	"zutil (MC:PE 1.1.5)",
 	"build "+version.Version+" "+"("+version.Commit+")",
+	"using "+runtime.Version(),
 	"",
-	"made by k4ties, anx1ous",
+	"[t.me/nigger1790]", "[t.me/zovutil]",
+	"[github.com/something-that-is-cool]",
+	"",
+	"made by controllin",
+	"turtl sosun",
 	"",
 	"Copyright (C) 2026 Ivan Z. All rights reserved.",
 )
