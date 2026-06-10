@@ -46,7 +46,7 @@ func (conf ByteToggleModule) New() (t ToggleableModule, err error) {
 		ErrorHandler: ErrorHandler{Error: conf.Error},
 		s:            conf.Settings,
 		proc:         conf.Process,
-		addr:         addr,
+		addr:         addr + conf.Settings.Offset,
 	}
 	m.toggler = &fyneutil.Toggler{
 		Handler: m,

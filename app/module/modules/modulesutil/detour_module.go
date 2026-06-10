@@ -42,28 +42,28 @@ func (conf DetourToggleModule) New() (t ToggleableModule, err error) {
 			return nil, fmt.Errorf("scan sig: %w", err)
 		}
 	}
-	addr += conf.Settings.Offset
-
 	m := &detourToggleModule{
 		ErrorHandler: ErrorHandler{Error: conf.Error},
 		proc:         conf.Process,
-		detour:       memutil.NewDetour(conf.Process, addr, 0, conf.TargetSize),
+		detour:       memutil.NewDetour(conf.Process, addr+conf.Settings.Offset, 0, conf.TargetSize),
 	}
-	m.toggler = &fyneutil.Toggler{
-		Handler: m,
-		Action: func(v bool, cause e.ActionCause) error {
-			if v {
-				if err := m.detour.EnableWithCode(conf.UserCode); err != nil {
-					return fmt.Errorf("enable detour: %w", err)
-				}
-			} else {
-				if err := m.detour.Disable(); err != nil {
-					return fmt.Errorf("disable detour: %w", err)
-				}
+	action := func(v bool, cause e.ActionCause) error {
+		if v {
+			if err := m.detour.EnableWithCode(conf.UserCode); err != nil {
+				return fmt.Errorf("enable detour: %w", err)
 			}
 			conf.OnToggle(v, cause)
 			return nil
-		},
+		}
+		if err := m.detour.Disable(); err != nil {
+			return fmt.Errorf("disable detour: %w", err)
+		}
+		conf.OnToggle(v, cause)
+		return nil
+	}
+	m.toggler = &fyneutil.Toggler{
+		Handler: m,
+		Action:  action,
 	}
 	m.toggler.Create()
 	return m, nil
