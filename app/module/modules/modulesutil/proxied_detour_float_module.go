@@ -5,16 +5,14 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
-	"github.com/something-that-is-cool/zutil/pkg/win/mem"
-	"github.com/something-that-is-cool/zutil/pkg/win/mem/memutil"
-
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/something-that-is-cool/zutil/app/module"
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/e"
 	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 	"github.com/something-that-is-cool/zutil/pkg/win"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem"
+	"github.com/something-that-is-cool/zutil/pkg/win/mem/memutil"
 )
 
 type ProxiedDetourFloatModule struct {
@@ -23,7 +21,7 @@ type ProxiedDetourFloatModule struct {
 	TargetSize uint
 	Process    *win.Process
 
-	UserCode func(valAddr uintptr) []byte
+	UserCode memutil.UserCodeFunc
 
 	Min, Max, Default, Step float64
 	ShowRemainer            bool
@@ -31,12 +29,11 @@ type ProxiedDetourFloatModule struct {
 	SliderToMemory func(float64) float32
 	MemoryToSlider func(float32) float64
 
-	OnToggle       func(bool, e.ActionCause)
 	OnValueChanged func(float64, e.ActionCause)
 	Error          func(error)
 }
 
-func (conf ProxiedDetourFloatModule) New(_ e.ActionCause) (t ToggleableModuleWithValue[float64], err error) {
+func (conf ProxiedDetourFloatModule) New(initialCause e.ActionCause) (t ModuleWithValue[float64], err error) {
 	if conf.UserCode == nil {
 		return nil, errors.New("empty user code")
 	}
@@ -48,9 +45,6 @@ func (conf ProxiedDetourFloatModule) New(_ e.ActionCause) (t ToggleableModuleWit
 	}
 	if conf.MemoryToSlider == nil {
 		conf.MemoryToSlider = func(f float32) float64 { return float64(f) }
-	}
-	if conf.OnToggle == nil {
-		conf.OnToggle = func(bool, e.ActionCause) {}
 	}
 	if conf.OnValueChanged == nil {
 		conf.OnValueChanged = func(float64, e.ActionCause) {}
@@ -71,6 +65,9 @@ func (conf ProxiedDetourFloatModule) New(_ e.ActionCause) (t ToggleableModuleWit
 		mToS:         conf.MemoryToSlider,
 		def:          conf.Default,
 	}
+	if err := m.det.Enable(m.uc, m.sToM(conf.Default)); err != nil {
+		return nil, fmt.Errorf("enable proxied detour: %w", err)
+	}
 	m.si = &fyneutil.SliderWithTrackedInput{
 		Default:       conf.Default,
 		Min:           conf.Min,
@@ -78,44 +75,21 @@ func (conf ProxiedDetourFloatModule) New(_ e.ActionCause) (t ToggleableModuleWit
 		Step:          conf.Step,
 		ShowRemainder: conf.ShowRemainer,
 		Action: func(newVal float64, cause e.ActionCause, first bool) error {
-			if first || !m.State() || !m.forceWrite(newVal) {
+			if !m.forceWrite(newVal) {
 				return nil
+			}
+			if first {
+				cause = initialCause
 			}
 			conf.OnValueChanged(newVal, cause)
 			return nil
 		},
 	}
 	m.si.Create()
-	m.si.Slider.Disable()
-	m.si.Input.Disable()
-
-	action := func(v bool, cause e.ActionCause) error {
-		if !v {
-			if err := m.det.Disable(); err != nil {
-				return fmt.Errorf("disable proxied detour: %w", err)
-			}
-			conf.OnToggle(v, cause)
-			return nil
-		}
-		if err := m.det.Enable(m.uc, m.sToM(m.si.Slider.Value)); err != nil {
-			return fmt.Errorf("enable proxied detour: %w", err)
-		}
-		m.val.Lock()
-		m.val.V.v = m.si.Slider.Value
-		m.val.V.notFirst = true
-		m.val.Unlock()
-		m.si.Slider.Enable()
-		m.si.Input.Enable()
-		conf.OnToggle(v, cause)
-		return nil
-	}
-	m.toggler = &fyneutil.Toggler{
-		Handler: m,
-		Action:  action,
-	}
-	m.toggler.Create()
 	return m, nil
 }
+
+var _ ModuleWithValue[float64] = (*proxiedDetourFloatModule)(nil)
 
 type proxiedDetourFloatModule struct {
 	e.ErrorHandler
@@ -123,10 +97,9 @@ type proxiedDetourFloatModule struct {
 	proc *win.Process
 	det  *memutil.ProxiedDetour[float32]
 
-	uc func(uintptr) []byte
+	uc memutil.UserCodeFunc
 
-	toggler *fyneutil.Toggler
-	si      *fyneutil.SliderWithTrackedInput
+	si *fyneutil.SliderWithTrackedInput
 
 	sToM func(float64) float32
 	mToS func(float32) float64
@@ -139,22 +112,7 @@ type proxiedDetourFloatModule struct {
 }
 
 func (m *proxiedDetourFloatModule) CreateObjects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{
-		m.toggler.Check,
-		container.NewGridWithColumns(2, m.si.Slider, m.si.Input),
-	}
-}
-
-func (m *proxiedDetourFloatModule) UpdateState(v bool, cause e.ActionCause, opts ...any) error {
-	if m.toggler.Check.Checked == v {
-		return e.ErrValuesIsAlready{Value: v}
-	}
-	m.toggler.Set(v, cause, opts...)
-	return nil
-}
-
-func (m *proxiedDetourFloatModule) State() bool {
-	return m.toggler.Check.Checked
+	return []fyne.CanvasObject{m.si.Slider, m.si.Input}
 }
 
 func (m *proxiedDetourFloatModule) SetValue(v float64, cause e.ActionCause, opts ...any) error {
@@ -178,15 +136,14 @@ func (m *proxiedDetourFloatModule) Value() (float64, bool) {
 	return m.val.V.v, true
 }
 
-func (m *proxiedDetourFloatModule) Disable(cause e.ActionCause) {
-	m.HandleError("disable proxied detour float module", disableOnlyAction(m, cause))
-	if m.State() {
-		m.forceWrite(m.def)
+func (m *proxiedDetourFloatModule) Disable(_ e.ActionCause) {
+	m.forceWrite(m.def)
+	if err := m.det.Disable(); err != nil {
+		m.HandleError("disable underlying detour", err)
 	}
 }
 
 func (m *proxiedDetourFloatModule) Edit(p module.Property, cause e.ActionCause) {
-	SyncState(m, p, cause)
 	SyncValue[float64](m, p, cause)
 }
 

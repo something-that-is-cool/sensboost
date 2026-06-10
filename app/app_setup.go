@@ -36,6 +36,7 @@ func (app *App) createModulesFromConfigs(configs []module.Config) (*modulesMap, 
 		multiErr error
 	)
 	for _, m := range toCreate {
+		app.conf.Logger.Debug("creating module from config...", "id", m.Config.Identifier())
 		mod, err := m.Config.Create(m.Property, actionCauseModuleCreated)
 		if err != nil {
 			multiErr = multierr.Append(multiErr, fmt.Errorf("create %q: %w", m.Config.Identifier(), err))
@@ -43,6 +44,7 @@ func (app *App) createModulesFromConfigs(configs []module.Config) (*modulesMap, 
 		}
 		ok = true // at least one module created
 		modules.Set(m.Config, mod)
+		app.conf.Logger.Debug("created module from config.", "id", m.Config.Identifier())
 	}
 	return modules, ok, multiErr
 }

@@ -3,7 +3,6 @@ package memutil
 import (
 	"errors"
 	"fmt"
-	"unsafe"
 
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/asm"
@@ -20,24 +19,21 @@ func NewProxiedDetour[T any](p *win.Process, target uintptr, size uint) *Proxied
 	return &ProxiedDetour[T]{d: NewDetour(p, target, 0, size)}
 }
 
-func (d *ProxiedDetour[T]) Enable(code func(valAddr uintptr) []byte, def ...T) (err error) {
+type UserCodeFunc = func(valAddr uintptr) []byte
+
+func (d *ProxiedDetour[T]) Enable(code UserCodeFunc, def ...T) (err error) {
 	d.d.data.Lock()
 	defer d.d.data.Unlock()
 
-	if err := d.d.init(); err != nil {
-		return fmt.Errorf("init: %w", err)
+	if d.valAddr == 0 {
+		if err := d.initUnsafe(def...); err != nil {
+			return fmt.Errorf("init: %w", err)
+		}
 	}
-	d.valAddr, err = mem.AllocNear(d.d.proc, d.d.data.V.target, unsafe.Sizeof(*new(T)))
-	if err != nil {
-		_, _ = mem.Unalloc(d.d.proc, d.d.data.V.cave)
-		return fmt.Errorf("alloc mem for proxy value: %w", err)
-	}
-	if err = mem.WriteMemory(d.d.proc, d.valAddr, misc.MustFirstOption(def)); err != nil {
-		d.cleanupUnsafe()
-		return fmt.Errorf("write initial zero val: %w", err)
+	if d.d.data.V.init {
+		return nil
 	}
 	retAddr := d.d.data.V.target + uintptr(d.d.data.V.size)
-
 	payload := append([]byte(nil), code(d.valAddr)...)
 	payload = append(payload, asm.Jmp(d.d.data.V.cave+uintptr(len(payload)), retAddr)...)
 
@@ -50,6 +46,25 @@ func (d *ProxiedDetour[T]) Enable(code func(valAddr uintptr) []byte, def ...T) (
 		return fmt.Errorf("underlying apply target patch: %w", err)
 	}
 	d.d.data.V.init = true
+	return nil
+}
+
+func (d *ProxiedDetour[T]) initUnsafe(val ...T) (err error) {
+	if d.valAddr != 0 {
+		return nil
+	}
+	if err = d.d.init(); err != nil {
+		return fmt.Errorf("init underlying detour: %w", err)
+	}
+	d.valAddr, err = mem.AllocNear(d.d.proc, d.d.data.V.target, misc.SizeOf(val))
+	if err != nil {
+		_, _ = mem.Unalloc(d.d.proc, d.d.data.V.cave)
+		return fmt.Errorf("alloc mem for proxy value: %w", err)
+	}
+	if err = mem.WriteMemory(d.d.proc, d.valAddr, misc.MustFirstOption(val)); err != nil {
+		d.cleanupUnsafe()
+		return fmt.Errorf("write initial val: %w", err)
+	}
 	return nil
 }
 

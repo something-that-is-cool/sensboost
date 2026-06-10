@@ -87,15 +87,6 @@ func (d *Detour) init() (err error) {
 	return nil
 }
 
-func (d *Detour) enableProxy(proxyAddr uintptr, xmmIndex byte) error {
-	shell := append([]byte(nil), asm.Pushfq())
-	shell = append(shell, asm.Push(asm.Rax)...)
-	shell = append(shell, asm.Mov64(asm.Rax, proxyAddr)...)
-	shell = append(shell, asm.MovssXmmToRax(xmmIndex)...)
-	shell = append(shell, asm.Pop(asm.Rax)...)
-	return d.EnableWithCode(append(shell, asm.Popfq()))
-}
-
 func (d *Detour) applyTargetPatch() error {
 	dist := int64(d.data.V.cave) - int64(d.data.V.target+5)
 	if dist < math.MinInt32 || dist > math.MaxInt32 {

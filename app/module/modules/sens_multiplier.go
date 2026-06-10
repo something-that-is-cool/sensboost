@@ -18,10 +18,8 @@ var sensMultiplierSettings = modulesutil.Settings{
 var _ module.Config = (*SensMultiplier)(nil)
 
 type SensMultiplier struct {
-	modulesutil.DefaultDisabled
 	Process        *win.Process
 	Error          func(error)
-	OnToggle       func(bool, e.ActionCause)
 	OnValueChanged func(float64, e.ActionCause)
 }
 
@@ -31,7 +29,6 @@ func (conf *SensMultiplier) Create(p module.Property, cause e.ActionCause) (modu
 		Process:        conf.Process,
 		TargetSize:     11,
 		Error:          conf.Error,
-		OnToggle:       conf.OnToggle,
 		OnValueChanged: conf.OnValueChanged,
 		Max:            3.0,
 		Default:        1.0,
@@ -46,12 +43,16 @@ func (conf *SensMultiplier) Create(p module.Property, cause e.ActionCause) (modu
 	if cause == nil {
 		cause = e.ActionCauseExternal
 	}
-	m := modulesutil.NewBaseToggleableValue(b,
+	m := modulesutil.NewBaseValue(b,
 		"sens multiplier",
 		"multiplies camera sensitivity with the given value (affects both kbm & controller platforms)",
 	)
 	m.Edit(p, cause)
 	return m, nil
+}
+
+func (conf *SensMultiplier) DefaultProperty() module.Property {
+	return module.Property{Value: 1.0}
 }
 
 func (*SensMultiplier) Identifier() string {

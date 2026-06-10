@@ -82,7 +82,7 @@ func (app *App) createOffVsyncModule(proc *win.Process) module.Config {
 func (app *App) createSensMultiplierModule(proc *win.Process) module.Config {
 	conf := &modules.SensMultiplier{Process: proc}
 	conf.Error = app.onError(conf.Identifier())
-	conf.OnToggle = app.onModuleToggled(conf.Identifier())
+	conf.OnValueChanged = onModuleValueChanged[float64](app, conf.Identifier())
 	return conf
 }
 
