@@ -196,13 +196,13 @@ func (app *App) close(cause e.CloseCause, main ...bool) (multi error) {
 	if err := app.closeLogic(cause); err != nil && errors.Is(err, e.ErrAlreadyClosed) {
 		return err
 	}
-	app.conf.Logger.Debug("closing window...", "main", misc.HasTrueOption(main))
-	// close window last of all !!!
-	relay := func(fn func()) { fn() }
-	if !misc.HasTrueOption(main) {
-		relay = fyne.DoAndWait
+	isMain := misc.HasTrueOption(main)
+	app.conf.Logger.Debug("closing window...", "main", isMain)
+
+	if isMain {
+		return nil
 	}
-	relay(app.app.Quit) //todo: close with timeout
+	fyne.DoAndWait(app.app.Quit)
 	return nil
 }
 

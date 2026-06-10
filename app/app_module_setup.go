@@ -11,7 +11,6 @@ import (
 
 func (app *App) setupModules(proc *win.Process) []module.Config {
 	return []module.Config{
-		app.createControllerSensitivityModule(proc),
 		app.createNoDynamicFovModule(proc),
 		app.createNoHurtCamModule(proc),
 		app.createAutoSprintModule(proc),
@@ -20,15 +19,8 @@ func (app *App) setupModules(proc *win.Process) []module.Config {
 		app.createItemDelayFixModule(proc),
 		app.createNoCamResetModule(proc),
 		app.createOffVsyncModule(proc),
-		app.createNoSensOffsetModule(proc),
+		app.createSensMultiplierModule(proc),
 	}
-}
-
-func (app *App) createControllerSensitivityModule(proc *win.Process) module.Config {
-	conf := &modules.ControllerSensitivity{Process: proc}
-	conf.Error = app.onError(conf.Identifier())
-	conf.OnValueChanged = onModuleValueChanged[float64](app, conf.Identifier())
-	return conf
 }
 
 func (app *App) createNoDynamicFovModule(proc *win.Process) module.Config {
@@ -87,8 +79,8 @@ func (app *App) createOffVsyncModule(proc *win.Process) module.Config {
 	return conf
 }
 
-func (app *App) createNoSensOffsetModule(proc *win.Process) module.Config {
-	conf := &modules.NoSensOffset{Process: proc}
+func (app *App) createSensMultiplierModule(proc *win.Process) module.Config {
+	conf := &modules.SensMultiplier{Process: proc}
 	conf.Error = app.onError(conf.Identifier())
 	conf.OnToggle = app.onModuleToggled(conf.Identifier())
 	return conf
