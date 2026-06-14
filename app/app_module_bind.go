@@ -85,9 +85,6 @@ func (app *App) bindToggleModule(id string, m module.Module) func() {
 		if !cursor.Focused() {
 			return
 		}
-		app.data.Lock()
-		defer app.data.Unlock()
-
 		t, ok := m.(modulesutil.ToggleableModule)
 		if !ok {
 			return

@@ -53,12 +53,9 @@ func (app *App) doClose(name string, fn func() error) {
 }
 
 func (app *App) ifUserConf(x func(*UserConfig) bool, fn func()) {
-	res := false
-	func() {
-		app.userConf.Lock()
-		defer app.userConf.Unlock()
-		res = x(app.userConf.V)
-	}()
+	app.userConf.Lock()
+	res := x(app.userConf.V)
+	app.userConf.Unlock()
 	if res {
 		fn()
 	}

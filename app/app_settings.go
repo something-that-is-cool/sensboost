@@ -24,6 +24,7 @@ func aboutMessage(conf Config) string {
 		fmt.Sprintf("zutil (for %s v%s)", conf.Process, conf.SupportedVersion),
 		"build "+version.Version+" "+"("+version.Commit+")",
 		"using "+runtime.Version(),
+		"built at "+version.GetBuildTime().Format(time.DateTime),
 		"",
 		"[t.me/nigger1790]", "[t.me/zovutil]",
 		"[github.com/something-that-is-cool]",
@@ -155,23 +156,25 @@ func (app *App) newShowErrorsCheck() *widget.Check {
 	toggler := &fyneutil.Toggler{
 		Handler: app,
 		Action: func(v bool, cause e.ActionCause) error {
-			app.showErrors(v, cause)
+			app.setShowErrors(v, cause)
 			return nil
 		},
 	}
 	toggler.Create()
-	toggler.Set(func() bool {
-		app.userConf.Lock()
-		defer app.userConf.Unlock()
-		return app.userConf.V.ShowErrors
-	}(), actionCauseJustCreated)
+	toggler.Set(app.showErrors(), actionCauseJustCreated)
 	return toggler.Check
 }
 
-func (app *App) showErrors(state bool, _ e.ActionCause) {
+func (app *App) setShowErrors(state bool, _ e.ActionCause) {
+	app.userConf.Lock()
+	app.userConf.V.ShowErrors = state
+	app.userConf.Unlock()
+}
+
+func (app *App) showErrors() bool {
 	app.userConf.Lock()
 	defer app.userConf.Unlock()
-	app.userConf.V.ShowErrors = state
+	return app.userConf.V.ShowErrors
 }
 
 func (app *App) applyConfig(newConf *UserConfig) map[module.Module]module.Property {
@@ -185,14 +188,13 @@ func (app *App) applyConfig(newConf *UserConfig) map[module.Module]module.Proper
 	app.data.Lock()
 	defer app.data.Unlock()
 
-	func() {
-		app.hm.Events.Lock()
-		defer app.hm.Events.Unlock()
-		// clear binds
-		app.hm.ClearHandlersUnsafe()
-		// apply new binds if there are
-		app.applyBindsUnsafe(app.userConf.V)
-	}()
+	app.hm.Events.Lock()
+	// clear binds
+	app.hm.ClearHandlersUnsafe()
+	// apply new binds if there are
+	app.applyBindsUnsafe(app.userConf.V)
+	app.hm.Events.Unlock()
+
 	toEdit := make(map[module.Module]module.Property)
 	// reset modules to default state
 	for conf, m := range app.data.V.modules.AllFromFront() {
