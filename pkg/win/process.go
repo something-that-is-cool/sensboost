@@ -3,6 +3,7 @@ package win
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/go-vgo/robotgo"
 	"github.com/something-that-is-cool/zutil/internal/misc"
@@ -26,8 +27,12 @@ type Process struct {
 	PID    uint32
 	Handle w.Handle
 	Name   string
+	Path   string
 
-	modules misc.ValueWithMutex[misc.CaseInsensitiveMap[ProcessModule]]
+	ver ProcessVersion
+
+	modules   misc.CaseInsensitiveMap[ProcessModule]
+	modulesMu sync.RWMutex
 }
 
 func OpenProcess(name string, notLoadModule ...bool) (*Process, error) {
@@ -39,36 +44,30 @@ func OpenProcess(name string, notLoadModule ...bool) (*Process, error) {
 	if err != nil {
 		return nil, err
 	}
+	path, err := ProcessPathByHandle(h)
+	if err != nil {
+		return nil, fmt.Errorf("get process path: %w", err)
+	}
+	ver, err := GetProcessVersion(path)
+	if err != nil {
+		return nil, fmt.Errorf("get process version: %w", err)
+	}
 	proc := &Process{
-		Name:   name,
-		PID:    pid,
-		Handle: h,
-		modules: misc.ValueWithMutex[misc.CaseInsensitiveMap[ProcessModule]]{
-			V: make(misc.CaseInsensitiveMap[ProcessModule]),
-		},
+		Handle:  h,
+		Name:    name,
+		PID:     pid,
+		Path:    path,
+		ver:     ver,
+		modules: make(misc.CaseInsensitiveMap[ProcessModule]),
 	}
 	if !misc.HasTrueOption(notLoadModule) {
 		mod, err := proc.GetModuleInfo()
 		if err != nil {
 			return nil, fmt.Errorf("get module info: %w", err)
 		}
-		proc.modules.V.Set(proc.Name, mod)
+		proc.modules.Set(proc.Name, mod)
 	}
 	return proc, nil
-}
-
-//goland:noinspection GoSnakeCaseUsage: win api constant
-const STILL_ACTIVE = 259
-
-func (proc *Process) Active() bool {
-	if proc.Handle == w.InvalidHandle {
-		return false
-	}
-	var exitCode uint32
-	if err := w.GetExitCodeProcess(proc.Handle, &exitCode); err != nil {
-		return false
-	}
-	return exitCode == STILL_ACTIVE
 }
 
 func (proc *Process) Close() error {

@@ -10,13 +10,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	_ "github.com/ebitengine/hideconsole"
 	"github.com/go-vgo/robotgo"
 	"github.com/something-that-is-cool/zutil/app"
 	"github.com/something-that-is-cool/zutil/internal/logger"
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/e"
-
-	_ "github.com/ebitengine/hideconsole"
 )
 
 const DisableDebugLogs = false

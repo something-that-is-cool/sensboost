@@ -1,10 +1,27 @@
 package win
 
 import (
+	"errors"
+	"fmt"
 	"path/filepath"
 
+	"github.com/something-that-is-cool/zutil/internal/misc"
 	w "golang.org/x/sys/windows"
 )
+
+//goland:noinspection GoSnakeCaseUsage: win api constant
+const STILL_ACTIVE = 259
+
+func (proc *Process) Active() bool {
+	if proc.Handle == w.InvalidHandle {
+		return false
+	}
+	var exitCode uint32
+	if err := w.GetExitCodeProcess(proc.Handle, &exitCode); err != nil {
+		return false
+	}
+	return exitCode == STILL_ACTIVE
+}
 
 func ForegroundIs(targetProc ...string) bool {
 	pid, ok := ForegroundPID()
@@ -17,8 +34,8 @@ func ForegroundIs(targetProc ...string) bool {
 	}
 	defer w.CloseHandle(h) //nolint:errcheck
 
-	name, ok := ProcessName(h)
-	if !ok {
+	name, err := ProcessNameByHandle(h)
+	if err != nil {
 		return false
 	}
 	for _, target := range targetProc {
@@ -29,14 +46,26 @@ func ForegroundIs(targetProc ...string) bool {
 	return false
 }
 
-func ProcessName(h w.Handle) (string, bool) {
+func ProcessNameByHandle(h w.Handle) (string, error) {
+	path, err := ProcessPathByHandle(h)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Base(path), nil
+}
+
+func ProcessPathByHandle(h w.Handle) (string, error) {
 	buf := make([]uint16, w.MAX_PATH)
 	size := uint32(len(buf))
 
 	if err := w.QueryFullProcessImageName(h, 0, &buf[0], &size); err != nil {
-		return "", false
+		return "", fmt.Errorf("query full proc image name: %w", err)
 	}
-	return filepath.Base(w.UTF16ToString(buf[:size])), true
+	path := w.UTF16ToString(buf[:size])
+	if path == "" {
+		return "", errors.New("empty path")
+	}
+	return path, nil
 }
 
 func ForegroundPID() (uint32, bool) {
@@ -47,8 +76,8 @@ func ForegroundPID() (uint32, bool) {
 	return pid, true
 }
 
-func OpenProcessHandle(pid uint32) (w.Handle, error) {
-	h, err := w.OpenProcess(w.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+func OpenProcessHandle(pid uint32, perms ...uint32) (w.Handle, error) {
+	h, err := w.OpenProcess(misc.MustFirstOptionOr(perms, w.PROCESS_QUERY_LIMITED_INFORMATION), false, pid)
 	if err != nil {
 		return 0, err
 	}

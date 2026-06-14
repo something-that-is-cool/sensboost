@@ -14,6 +14,10 @@ type Config struct {
 	Process string
 }
 
+const GameVersion = "1.1.5"
+
+var supportedVersion = win.MustParseVersion(GameVersion)
+
 // New tries to create new App instance from Config, allowing to provide custom
 // context to control app lifecycle.
 func (conf Config) New(parent context.Context) (*App, error) {
@@ -26,6 +30,10 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	proc, err := win.OpenProcess(conf.Process)
 	if err != nil {
 		return nil, fmt.Errorf("open process: %w", err)
+	}
+	if !versionSupported(proc) {
+		_ = proc.Close()
+		return nil, fmt.Errorf("unsupported version: %q", proc.Version())
 	}
 	app := &App{conf: conf}
 	trackerConf := win.ProcessTrackerConfig{
@@ -41,4 +49,8 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	app.deployFyne()
 	app.ctx, app.cancel = context.WithCancel(parent)
 	return app, nil
+}
+
+func versionSupported(proc *win.Process) bool {
+	return proc.Version().E(supportedVersion)
 }

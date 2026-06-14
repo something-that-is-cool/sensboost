@@ -28,17 +28,17 @@ func (proc *Process) GetModuleInfo(opts ...GetModuleInfoOptions) (ProcessModule,
 	}
 	opt := proc.extractGetModuleOptions(opts)
 
-	proc.modules.Lock()
-	defer proc.modules.Unlock()
+	proc.modulesMu.Lock()
+	defer proc.modulesMu.Unlock()
 
-	if m, ok := proc.modules.V.Get(opt.Name); ok {
+	if m, ok := proc.modules.Get(opt.Name); ok {
 		return m, nil
 	}
 	mod, err := proc.findModule(opt.Name)
 	if err != nil {
 		return ProcessModule{}, err
 	}
-	proc.modules.V.Set(opt.Name, mod)
+	proc.modules.Set(opt.Name, mod)
 	return mod, nil
 }
 
