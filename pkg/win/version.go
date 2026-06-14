@@ -47,6 +47,10 @@ type ProcessVersion struct {
 	Major, Minor, Patch, Build uint32
 }
 
+func (v ProcessVersion) Zero() bool {
+	return v.Major == 0 && v.Minor == 0 && v.Patch == 0 && v.Build == 0
+}
+
 func (v ProcessVersion) String() string {
 	if v.Build != 0 {
 		return fmt.Sprintf("%d.%d.%d.%d", v.Major, v.Minor, v.Patch, v.Build)
@@ -95,7 +99,7 @@ func GetProcessVersion(path string) (ProcessVersion, error) {
 	if err = w.GetFileVersionInfo(path, 0, size, unsafe.Pointer(&buf[0])); err != nil {
 		return ProcessVersion{}, fmt.Errorf("get file ver info: %w", err)
 	}
-	var info *w.VS_FIXEDFILEINFO
+	info := new(w.VS_FIXEDFILEINFO) //nilaway paranoia
 	if err = w.VerQueryValue(unsafe.Pointer(&buf[0]), `\`, unsafe.Pointer(&info), new(uint32)); err != nil {
 		return ProcessVersion{}, fmt.Errorf("ver query val: %w", err)
 	}

@@ -10,19 +10,19 @@ import (
 )
 
 type Config struct {
-	Logger  *slog.Logger
-	Process string
+	Logger           *slog.Logger
+	Process          string
+	SupportedVersion win.ProcessVersion
 }
-
-const GameVersion = "1.1.5"
-
-var supportedVersion = win.MustParseVersion(GameVersion)
 
 // New tries to create new App instance from Config, allowing to provide custom
 // context to control app lifecycle.
 func (conf Config) New(parent context.Context) (*App, error) {
 	if conf.Process == "" {
 		return nil, errors.New("empty process")
+	}
+	if conf.SupportedVersion.Zero() {
+		return nil, errors.New("must specify supported version")
 	}
 	if conf.Logger == nil {
 		conf.Logger = slog.Default()
@@ -31,7 +31,7 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open process: %w", err)
 	}
-	if !versionSupported(proc) {
+	if !proc.Version().E(conf.SupportedVersion) {
 		_ = proc.Close()
 		return nil, fmt.Errorf("unsupported version: %q", proc.Version())
 	}
@@ -49,8 +49,4 @@ func (conf Config) New(parent context.Context) (*App, error) {
 	app.deployFyne()
 	app.ctx, app.cancel = context.WithCancel(parent)
 	return app, nil
-}
-
-func versionSupported(proc *win.Process) bool {
-	return proc.Version().E(supportedVersion)
 }

@@ -16,13 +16,15 @@ import (
 	"github.com/something-that-is-cool/zutil/internal/logger"
 	"github.com/something-that-is-cool/zutil/internal/misc"
 	"github.com/something-that-is-cool/zutil/pkg/e"
+	"github.com/something-that-is-cool/zutil/pkg/win"
 )
 
 const DisableDebugLogs = false
 
 var config = app.Config{
-	Process: "Minecraft.Windows.exe",
-	Logger:  createLogger(),
+	Process:          "Minecraft.Windows.exe",
+	Logger:           createLogger(),
+	SupportedVersion: win.ProcessVersion{Major: 1, Minor: 1, Patch: 5},
 }
 
 func main() {
@@ -55,7 +57,7 @@ func doPanic(v any) {
 	msg := misc.JoinNewLine(
 		fmt.Sprint(v),
 		"",
-		"Please make sure you're running Minecraft Pocket Edition with version 1.1.5",
+		fmt.Sprintf("Please make sure you're running %q with version %q", config.Process, config.SupportedVersion.String()),
 	)
 	robotgo.Alert("Program exited with error (panic)", msg)
 	os.Exit(1)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -18,19 +19,21 @@ import (
 	"github.com/something-that-is-cool/zutil/pkg/fyneutil"
 )
 
-var aboutMessage = misc.JoinNewLine(
-	"zutil (MC:PE 1.1.5)",
-	"build "+version.Version+" "+"("+version.Commit+")",
-	"using "+runtime.Version(),
-	"",
-	"[t.me/nigger1790]", "[t.me/zovutil]",
-	"[github.com/something-that-is-cool]",
-	"",
-	"made by controllin",
-	"turtl sosun",
-	"",
-	"Copyright (C) 2026 Ivan Z. All rights reserved.",
-)
+func aboutMessage(conf Config) string {
+	return misc.JoinNewLine(
+		fmt.Sprintf("zutil (for %s v%s)", conf.Process, conf.SupportedVersion),
+		"build "+version.Version+" "+"("+version.Commit+")",
+		"using "+runtime.Version(),
+		"",
+		"[t.me/nigger1790]", "[t.me/zovutil]",
+		"[github.com/something-that-is-cool]",
+		"",
+		"made by controllin",
+		"turtl sosun",
+		"",
+		fmt.Sprintf("Copyright (C) %d Ivan Z. All rights reserved.", time.Now().Year()),
+	)
+}
 
 func (app *App) createSettingsObject() fyne.CanvasObject {
 	settings := &widget.Button{
@@ -38,7 +41,7 @@ func (app *App) createSettingsObject() fyne.CanvasObject {
 		OnTapped: app.showSettings,
 	}
 	about := &widget.Button{Icon: theme.InfoIcon(), OnTapped: func() {
-		app.showInfo("About", aboutMessage)
+		app.showInfo("About", aboutMessage(app.conf))
 	}}
 	toggleTheme := &widget.Button{Icon: theme.VisibilityIcon(), OnTapped: func() {
 		app.userConf.Lock()
