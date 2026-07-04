@@ -89,9 +89,7 @@ func (proc *Process) Version() ProcessVersion {
 }
 
 func GetProcessVersion(path string) (ProcessVersion, error) {
-	var handle w.Handle
-
-	size, err := w.GetFileVersionInfoSize(path, &handle)
+	size, err := w.GetFileVersionInfoSize(path, nil)
 	if err != nil || size == 0 {
 		return ProcessVersion{}, fmt.Errorf("get file ver info size: %w", err)
 	}

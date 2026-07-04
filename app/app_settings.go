@@ -46,10 +46,9 @@ func (app *App) createSettingsObject() fyne.CanvasObject {
 	}}
 	toggleTheme := &widget.Button{Icon: theme.VisibilityIcon(), OnTapped: func() {
 		app.userConf.Lock()
-		defer app.userConf.Unlock()
-
 		app.userConf.V.LightTheme = !app.userConf.V.LightTheme
 		app.syncTheme(app.userConf.V)
+		app.userConf.Unlock()
 	}}
 	buttons := fyneutil.LeftAndRight(toggleTheme, settings)
 	return fyneutil.LeftAndRight(buttons, about)

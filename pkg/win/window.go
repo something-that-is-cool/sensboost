@@ -23,7 +23,7 @@ func (proc *Process) Active() bool {
 	return exitCode == STILL_ACTIVE
 }
 
-func ForegroundIs(targetProc ...string) bool {
+func ForegroundIs(targetProc string) bool {
 	pid, ok := ForegroundPID()
 	if !ok {
 		return false
@@ -38,10 +38,8 @@ func ForegroundIs(targetProc ...string) bool {
 	if err != nil {
 		return false
 	}
-	for _, target := range targetProc {
-		if name == target {
-			return true
-		}
+	if name == targetProc {
+		return true
 	}
 	return false
 }

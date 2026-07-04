@@ -61,10 +61,6 @@ func ParseSignature(from string) (sig Signature, err error) {
 	return sig, nil
 }
 
-func FullMask(n int) string {
-	return strings.Repeat("x", n)
-}
-
 func matchSignature(data []byte, sig Signature) bool {
 	for i := 0; i < len(sig.Data); i++ {
 		if sig.Mask[i] == 'x' && data[i] != sig.Data[i] {
@@ -72,4 +68,8 @@ func matchSignature(data []byte, sig Signature) bool {
 		}
 	}
 	return true
+}
+
+func FullMask(n int) string {
+	return strings.Repeat("x", n)
 }
