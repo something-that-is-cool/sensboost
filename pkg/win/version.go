@@ -64,8 +64,12 @@ func (v ProcessVersion) String() string {
 	return fmt.Sprintf("%d", v.Major)
 }
 
-func (v ProcessVersion) Value() int64 {
+func (v ProcessVersion) ValueB() int64 {
 	return (int64(v.Major) << 48) | (int64(v.Minor) << 32) | (int64(v.Patch) << 16) | int64(v.Build)
+}
+
+func (v ProcessVersion) Value() int64 {
+	return (int64(v.Major) << 32) | (int64(v.Minor) << 16) | int64(v.Patch)
 }
 
 func (v ProcessVersion) GT(other ProcessVersion) bool {
