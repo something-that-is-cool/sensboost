@@ -8,3 +8,4 @@ if not exist app.syso (
     rsrc -manifest app.exe.manifest -o app.syso
 )
 go build -ldflags="-s -w -X '%PKG%.Version=%GIT_VERSION%' -X '%PKG%.Commit=%GIT_COMMIT%' -X '%PKG%.BuildTime=%BUILD_TIME%'" -tags no_emoji -o zutil.exe
+upx --best zutil.exe
